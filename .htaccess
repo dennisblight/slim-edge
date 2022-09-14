@@ -1,0 +1,28 @@
+# For production, put your rewrite rules directly into your VirtualHost
+
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+
+    RewriteCond %{REQUEST_FILENAME} -s [OR]
+    RewriteCond %{REQUEST_FILENAME} -l [OR]
+    RewriteCond %{REQUEST_FILENAME} -d
+    RewriteRule ^.*$ - [NC,L]
+
+    RewriteCond %{REQUEST_URI}::$1 ^(/.+)(.+)::\2$
+    RewriteRule ^(.*) - [E=BASE:%1]
+    RewriteRule ^(.*)$ %{ENV:BASE}index.php [NC,L]
+</IfModule>
+
+<Files ~ "^.*\.(ht|git)">
+    order allow,deny
+    deny from all
+    satisfy all
+</Files>
+
+<Files "README.md">
+    order allow,deny
+    deny from all
+    satisfy all
+</Files>
+
+SetEnv ENV development

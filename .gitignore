@@ -1,0 +1,9 @@
+/vendor/*
+!/vendor/index.html
+!/vendor/.htaccess
+composer.lock
+/composer.lock
+/storage/*
+!/storage/index.html
+!/storage/.htaccess
+rnd*.php
