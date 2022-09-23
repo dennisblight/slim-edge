@@ -1,8 +1,7 @@
 <?php
 
 use App\Controller;
-use Laminas\Diactoros\Response;
 
-$app->get('/', function() {
-    return new Response\JsonResponse('OK');
-});
+// $app->get('/', Controller\Index::class . ':indexGet');
+
+// $app->get('/errors/403', Controller\Errors::class . ':error403');

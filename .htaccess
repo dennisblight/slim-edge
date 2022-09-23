@@ -1,28 +1,15 @@
-# For production, put your rewrite rules directly into your VirtualHost
-
 <IfModule mod_rewrite.c>
     RewriteEngine On
-
-    RewriteCond %{REQUEST_FILENAME} -s [OR]
-    RewriteCond %{REQUEST_FILENAME} -l [OR]
-    RewriteCond %{REQUEST_FILENAME} -d
-    RewriteRule ^.*$ - [NC,L]
-
-    RewriteCond %{REQUEST_URI}::$1 ^(/.+)(.+)::\2$
-    RewriteRule ^(.*) - [E=BASE:%1]
-    RewriteRule ^(.*)$ %{ENV:BASE}index.php [NC,L]
+    RewriteCond %{REQUEST_FILENAME} !-f
+    RewriteCond %{REQUEST_FILENAME} !-d
+    RewriteRule ^ index.php/$1 [L]
 </IfModule>
 
-<Files ~ "^.*\.(ht|git)">
-    order allow,deny
-    deny from all
-    satisfy all
-</Files>
+ErrorDocument 400 "/errors/400.php"
+ErrorDocument 401 "/errors/401.php"
+ErrorDocument 403 "/errors/403.php"
+ErrorDocument 404 "/errors/404.php"
 
-<Files "README.md">
-    order allow,deny
-    deny from all
-    satisfy all
-</Files>
+RedirectMatch 404 "^/(?:app|storage|system|vendor|\.|composer|LICENSE|README)"
 
-SetEnv ENV development
+SetEnvIf SERVER_ADDR "^(?:127\.0\.0\.\d+|::1)" ENV=development

@@ -5,11 +5,12 @@ declare(strict_types=1);
 namespace SlimEdge\Annotation\Route;
 
 use Doctrine\Common\Annotations\Annotation;
+use Doctrine\Common\Annotations\Annotation\Target;
 use InvalidArgumentException;
 
 /**
  * @Annotation
- * @Annotation\Target({"CLASS", "METHOD"})
+ * @Target({"CLASS", "METHOD"})
  */
 class Middleware
 {
@@ -17,8 +18,6 @@ class Middleware
 
     public function __construct(...$values)
     {
-        $middlewares = array_values($values);
-
         $middlewares = array_map(function($item) {
             $value = $item['value'];
             $baseName = $value;
@@ -34,13 +33,8 @@ class Middleware
             return $value;
         }, $values);
 
-        $middlewares = array_filter(
-            $middlewares,
-            function($item) {
-                return !empty($item);
-            }
-        );
-
-        $this->middlewares = $middlewares;
+        $this->middlewares = array_filter($middlewares, function($item) {
+            return !empty($item);
+        });
     }
 }

@@ -11,14 +11,19 @@ use Psr\Http\Server\MiddlewareInterface;
 use Psr\Http\Server\RequestHandlerInterface;
 use Slim\Routing\RouteContext;
 use SlimEdge\Entity\Collection;
+use SlimEdge\Kernel;
 
 class CorsMiddleware implements MiddlewareInterface
 {
     /** @var Collection $config */
     private $config;
 
-    public function __construct(ContainerInterface $container)
+    public function __construct(?ContainerInterface $container)
     {
+        if(is_null($container)) {
+            $container = Kernel::$container;
+        }
+
         $this->config = $container->get('config')->cors ?? new Collection();
     }
 

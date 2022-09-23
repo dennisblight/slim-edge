@@ -8,12 +8,7 @@ use Respect\Validation\Exceptions\ValidationException;
 use Slim\Exception\HttpException;
 
 return [
-    'compileContainer'  => false,
-    'cacheContainer'    => false,
-    
-    'cacheAnnotation'   => false,
-
-    'enableCache' => false, // ['route', 'entity', 'container']
+    'enableCache' => ['route', 'annotation', 'container'], // ['route', 'entity', 'container']'
 
     'annotationRouting' => true,
     'enableBodyParsing' => true,
@@ -33,6 +28,7 @@ return [
     'middleware' => [
         SlimEdge\Middleware\TrimSlashes::class,
         SlimEdge\Middleware\CorsMiddleware::class,
+        SlimEdge\Middleware\ProfilingMiddeware::class,
     ],
 
     'errors' => [

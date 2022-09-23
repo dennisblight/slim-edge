@@ -11,12 +11,12 @@ use SlimEdge\Annotation\Route;
 
 /**
  * @Annotation
- * @Annotation\NamedArgumentConstructor
- * @Annotation\Target({"METHOD"})
+ * @NamedArgumentConstructor
+ * @Target({"METHOD"})
  */
 class Get extends Route
 {
-    public function __construct(string $path, string $name = null, array $arguments = [])
+    public function __construct($path, string $name = null, array $arguments = [])
     {
         parent::__construct(['GET'], $path, $name, $arguments);
     }

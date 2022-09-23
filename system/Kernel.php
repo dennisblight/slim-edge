@@ -13,7 +13,9 @@ use SlimEdge\Entity\Collection;
 use SlimEdge\Factory\ConfigFactory;
 use SlimEdge\Middleware\CorsMiddleware;
 use SlimEdge\Middleware\RequestPassingMiddleware;
+use SlimEdge\Route\AnnotationRoute;
 use Symfony\Component\Console\Application;
+use Symfony\Component\Stopwatch\Stopwatch;
 
 class Kernel
 {
@@ -52,10 +54,14 @@ class Kernel
 
         $bs = new static;
 
+        $stopwatch = new Stopwatch();
+        $stopwatch->start('booting');
+
         $config = $bs->loadConfig();
         $builder = $bs->createBuilder($config);
 
         static::$container = $builder->build();
+        static::$container->set(Stopwatch::class, $stopwatch);
         static::$app = DI\Bridge\Slim\Bridge::create(static::$container);
         $bs->registerMiddleware($config);
         $bs->registerErrorHandler($config);
@@ -309,6 +315,13 @@ class Kernel
             };
 
             $load(static::$app);
+        }
+
+        $annotationRouting = $config['annotationRouting'] ?? false;
+        if($annotationRouting)
+        {
+            $annotationRoute = new AnnotationRoute(static::$container);
+            $annotationRoute->register();
         }
 
         $routeBasePath = $config['routeBasePath'] ?? get_base_path();

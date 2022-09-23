@@ -13,6 +13,7 @@ use Psr\SimpleCache\CacheInterface;
 use SlimEdge\Entity\Collection;
 use SlimEdge\Kernel;
 use SlimEdge\Paths;
+use Symfony\Component\Stopwatch\Stopwatch;
 
 use function SlimEdge\Helpers\enable_cache;
 
@@ -48,4 +49,8 @@ return [
     }),
 
     'cache' => \DI\get(CacheInterface::class),
+
+    Stopwatch::class => \DI\Factory(function() {
+        return new Stopwatch();
+    }),
 ];

@@ -122,7 +122,7 @@ class AnnotationRoute
                 array_push($routes, [
                     $annotation->methods,
                     $this->cleanUrl($basePath . $annotation->path),
-                    [$method->getDeclaringClass(), $method->name],
+                    [$method->getDeclaringClass()->getName(), $method->name],
                     $annotation->name,
                     $annotation->arguments,
                 ]);

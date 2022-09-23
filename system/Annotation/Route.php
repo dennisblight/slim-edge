@@ -34,7 +34,7 @@ class Route
     {
         $methods = (array) $methods;
         $methods = array_filter($methods, function ($item) {
-            return in_array($item, Route::ValidMethods);
+            return in_array($item, self::ValidMethods);
         });
 
         if (empty($methods)) {
