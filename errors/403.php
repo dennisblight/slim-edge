@@ -5,6 +5,6 @@ header('Content-Type: application/json');
 header('Cache-Control: no-cache');
 
 echo json_encode([
-    'status' => 403,
+    'code' => 403,
     'message' => 'You are not permitted to perform the requested operation.'
 ]);

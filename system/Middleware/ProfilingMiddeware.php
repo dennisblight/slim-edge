@@ -30,18 +30,24 @@ class ProfilingMiddeware implements MiddlewareInterface
         $hasProfiling = $request->getHeaderLine('X-Profiling');
 
         if($hasProfiling) {
-            $bootingDuration = $this->stopwatch->stop('booting')->getDuration();
             $this->stopwatch->start('application');
         }
 
         $response = $handler->handle($request);
+        if(isset($_SERVER['REQUEST_TIME_FLOAT'])) {
+            $bootingDuration = microtime(true) - $_SERVER['REQUEST_TIME_FLOAT'];
+            $bootingDuration *= 1000;
+            $bootingDuration = round($bootingDuration);
+        }
 
         if($hasProfiling) {
             $duration = $this->stopwatch->stop('application')->getDuration();
-            $response = $response->withHeader('X-Profiling', [
-                'booting: ' . $bootingDuration,
-                'application: ' . $duration
-            ]);
+            $profiles = ['application: ' . $duration];
+            if(isset($bootingDuration)) {
+                array_unshift($profiles, ['booting:', $bootingDuration]);
+            }
+
+            $response = $response->withHeader('X-Profiling', $profiles);
         }
 
         return $response;

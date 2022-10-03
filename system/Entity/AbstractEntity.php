@@ -140,11 +140,9 @@ class AbstractEntity extends AbstractCollection
 
     public static function resolveBehavior()
     {
-        if(!static::tryResolveFromRegistry()) {
-            if(!static::tryResolveFromCache()) {
-                static::resolveAnnotations();
-                static::saveToCache();
-            }
+        if(!static::tryResolveFromRegistry() && !static::tryResolveFromCache()) {
+            static::resolveAnnotations();
+            static::saveToCache();
         }
     }
 

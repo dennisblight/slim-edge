@@ -6,11 +6,12 @@ namespace SlimEdge;
 
 use DI;
 use Psr\Container\ContainerInterface;
-use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Slim\App;
+use SlimEdge\Commands\RouteList;
 use SlimEdge\Entity\Collection;
 use SlimEdge\Factory\ConfigFactory;
+use SlimEdge\Handlers\Preflight;
 use SlimEdge\Middleware\CorsMiddleware;
 use SlimEdge\Middleware\RequestPassingMiddleware;
 use SlimEdge\Route\AnnotationRoute;
@@ -54,14 +55,14 @@ class Kernel
 
         $bs = new static;
 
-        $stopwatch = new Stopwatch();
-        $stopwatch->start('booting');
+        // $stopwatch = new Stopwatch();
+        // $stopwatch->start('booting');
 
         $config = $bs->loadConfig();
         $builder = $bs->createBuilder($config);
 
         static::$container = $builder->build();
-        static::$container->set(Stopwatch::class, $stopwatch);
+        // static::$container->set(Stopwatch::class, $stopwatch);
         static::$app = DI\Bridge\Slim\Bridge::create(static::$container);
         $bs->registerMiddleware($config);
         $bs->registerErrorHandler($config);
@@ -69,6 +70,7 @@ class Kernel
 
         if (is_cli()) {
             static::$console = new Application($config['console'] ?? "Slim Edge");
+            static::$console->add(new RouteList);
             return static::$console;
         }
 
@@ -131,7 +133,7 @@ class Kernel
             $builder->useAnnotations(false);
         }
 
-        $compileContainer = $config['compileContainer'] ?? true;
+        $compileContainer = $config['compileContainer'] ?? false;
         assert(
             is_bool($compileContainer),
             "Compile container option must be boolean"
@@ -264,13 +266,9 @@ class Kernel
             $app->addBodyParsingMiddleware();
         }
 
-        $cors = $config['cors'] ?? [];
-        $enableCors = $cors['enableCors'] ?? false;
+        $enableCors = $config['cors']['enableCors'] ?? false;
         if($enableCors) {
-            $app->options('/{routes:.+}', function(ResponseInterface $response) {
-                return $response;
-            })->setName('preflight');
-
+            $app->options('{uri:.+}', Preflight::class)->setName('preflight');
             $app->add(CorsMiddleware::class);
         }
 
@@ -318,8 +316,7 @@ class Kernel
         }
 
         $annotationRouting = $config['annotationRouting'] ?? false;
-        if($annotationRouting)
-        {
+        if($annotationRouting) {
             $annotationRoute = new AnnotationRoute(static::$container);
             $annotationRoute->register();
         }

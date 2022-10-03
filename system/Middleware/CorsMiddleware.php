@@ -11,19 +11,14 @@ use Psr\Http\Server\MiddlewareInterface;
 use Psr\Http\Server\RequestHandlerInterface;
 use Slim\Routing\RouteContext;
 use SlimEdge\Entity\Collection;
-use SlimEdge\Kernel;
 
 class CorsMiddleware implements MiddlewareInterface
 {
     /** @var Collection $config */
     private $config;
 
-    public function __construct(?ContainerInterface $container)
+    public function __construct(ContainerInterface $container)
     {
-        if(is_null($container)) {
-            $container = Kernel::$container;
-        }
-
         $this->config = $container->get('config')->cors ?? new Collection();
     }
 
@@ -40,28 +35,22 @@ class CorsMiddleware implements MiddlewareInterface
         if($this->config->has('allowHeaders'))
         {
             $allowHeaders = $this->config->allowHeaders;
-            $requestHeaders = array_map(function($item) {
-                return trim($item);
-            }, explode(',', $requestHeaders));
+            $requestHeaders = array_map('trim', explode(',', $requestHeaders));
             $requestHeaders = join(', ', array_intersect($allowHeaders->all(), $requestHeaders));
         }
 
         $origin = '*';
-        if($this->config->has('allowOrigins'))
-        {
+        if($this->config->has('allowOrigins')) {
             $requestOrigin = $request->getHeaderLine('origin');
             $allowOrigins = (array) $this->config->allowOrigins;
 
-            if(in_array('*', $allowOrigins))
-            {
+            if(in_array('*', $allowOrigins)) {
                 $origin = '*';
             }
-            elseif(in_array($requestOrigin, $allowOrigins))
-            {
+            elseif(in_array($requestOrigin, $allowOrigins)) {
                 $origin = $requestOrigin;
             }
-            else
-            {
+            else {
                 $origin = (string) $request->getUri()->withPath('');
             }
         }

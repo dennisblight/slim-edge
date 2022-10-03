@@ -3,13 +3,25 @@
     RewriteCond %{REQUEST_FILENAME} !-f
     RewriteCond %{REQUEST_FILENAME} !-d
     RewriteRule ^ index.php/$1 [L]
+
+    RewriteCond %{REQUEST_FILENAME} -f
+    RewriteCond %{REQUEST_FILENAME} -s
+    RewriteCond %{REQUEST_URI} !^/index.php
+    RewriteCond %{REQUEST_URI} !^/errors/
+    RewriteRule ^ errors/403.php [L]
 </IfModule>
 
-ErrorDocument 400 "/errors/400.php"
-ErrorDocument 401 "/errors/401.php"
-ErrorDocument 403 "/errors/403.php"
-ErrorDocument 404 "/errors/404.php"
+<IfModule mod_alias.c>
+    ErrorDocument 400 "/errors/400.php"
+    ErrorDocument 401 "/errors/401.php"
+    ErrorDocument 403 "/errors/403.php"
+    ErrorDocument 404 "/errors/404.php"
+    ErrorDocument 410 "/errors/410.php"
+    ErrorDocument 500 "/errors/500.php"
+    ErrorDocument 501 "/errors/501.php"
+</IfModule>
 
-RedirectMatch 404 "^/(?:app|storage|system|vendor|\.|composer|LICENSE|README)"
+LimitRequestBody 2000
+Options -Indexes
 
 SetEnvIf SERVER_ADDR "^(?:127\.0\.0\.\d+|::1)" ENV=development

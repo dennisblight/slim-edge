@@ -8,7 +8,8 @@ use Respect\Validation\Exceptions\ValidationException;
 use Slim\Exception\HttpException;
 
 return [
-    'enableCache' => ['route', 'annotation', 'container'], // ['route', 'entity', 'container']'
+    // 'enableCache' => ['route', 'annotation', 'container'], // ['route', 'entity', 'container']'
+    'enableCache' => false,
 
     'annotationRouting' => true,
     'enableBodyParsing' => true,
@@ -51,7 +52,8 @@ return [
     ],
 
     'routes' => [
-        'main'
+        'main',
+        'errors',
     ],
 
     'autoloadCommands' => false,

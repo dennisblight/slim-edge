@@ -11,7 +11,7 @@ use Respect\Validation\Exceptions\NestedValidationException;
 use Slim\Factory\AppFactory;
 use Throwable;
 
-class FormValidationHandler implements ErrorHandlerInterface
+class ValidationHandler implements ErrorHandlerInterface
 {
     public function __invoke(
         ServerRequestInterface $request,

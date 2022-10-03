@@ -6,6 +6,7 @@ namespace SlimEdge\Handlers;
 
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Message\ResponseInterface;
+use Slim\Exception\HttpException;
 use Slim\Exception\HttpMethodNotAllowedException;
 use Slim\Exception\HttpNotFoundException;
 use Slim\Factory\AppFactory;
@@ -14,6 +15,13 @@ use Throwable;
 
 class SlimHttpHandler implements ErrorHandlerInterface
 {
+    /**
+     * @param ServerRequestInterface $request
+     * @param HttpException $exception
+     * @param bool $displayErrorDetails
+     * @param bool $logErrors
+     * @param bool $logErrorDetails
+     */
     public function __invoke(
         ServerRequestInterface $request,
         Throwable $exception,
@@ -46,7 +54,7 @@ class SlimHttpHandler implements ErrorHandlerInterface
 
         $payload = [
             'code'    => $exception->getCode(),
-            'message' => $exception->getMessage(),
+            'message' => $exception->getDescription(),
         ];
 
         if($exception instanceof HttpMethodNotAllowedException)

@@ -10,24 +10,28 @@ use Slim\Routing\RouteContext;
 class AbstractForm extends AbstractEntity
 {
     /**
-     * Fetch from query parameter
+     * Fetch from query
+     * @var string[] $fetchQuery
      */
-    public const FetchQuery  = 0x01;
+    protected static $fetchQuery = [];
 
     /**
-     * Fetch from parsed body parameter
+     * Fetch from parsed body
+     * @var string[] $fetchBody
      */
-    public const FetchPost   = 0x02;
+    protected static $fetchBody = [];
 
     /**
      * Fetch from uploaded files in multipart form
+     * @var string[] $fetchFile
      */
-    public const FetchFiles  = 0x04;
+    protected static $fetchFile = [];
 
     /**
-     * Fetch from URL parameter
+     * Fetch from URI arguments
+     * @var string[] $fetchArgs
      */
-    public const FetchParams = 0x08;
+    protected static $fetchArgs = [];
 
     /**
      * Trim each string parameter
@@ -41,8 +45,6 @@ class AbstractForm extends AbstractEntity
      */
     public static $removeInvisibleCharacters = true;
 
-    public static $fetchOptions = self::FetchQuery | self::FetchPost;
-
     /**
      * @return static Object from request
      */
@@ -50,23 +52,34 @@ class AbstractForm extends AbstractEntity
     {
         $params = [];
 
-        if(static::$fetchOptions & self::FetchQuery) {
-            $params = array_merge($params, $request->getQueryParams());
+        if(!empty(static::$fetchQuery)) {
+            $query = $request->getQueryParams();
+            foreach(static::$fetchQuery as $field) {
+                if(isset($query[$field])) $params[$field] = $query[$field];
+            }
         }
 
-        if(static::$fetchOptions & self::FetchPost) {
-            $params = array_merge($params, $request->getParsedBody());
+        if(!empty(static::$fetchBody)) {
+            $body = $request->getParsedBody();
+            foreach(static::$fetchBody as $field) {
+                if(isset($body[$field])) $params[$field] = $body[$field];
+            }
         }
 
-        if(static::$fetchOptions & self::FetchFiles) {
-            $params = array_merge($params, $request->getUploadedFiles());
+        if(!empty(static::$fetchFile)) {
+            $files = $request->getUploadedFiles();
+            foreach(static::$fetchFile as $field) {
+                if(isset($files[$field])) $params[$field] = $files[$field];
+            }
         }
 
-        if(static::$fetchOptions & self::FetchParams) {
+        if(!empty(static::$fetchArgs)) {
             $routeContext = RouteContext::fromRequest($request);
-
             $routingResult = $routeContext->getRoutingResults();
-            $params = array_merge($params, $routingResult->getRouteArguments());
+            $args = $routingResult->getRouteArguments();
+            foreach(static::$fetchArgs as $field) {
+                if(isset($args[$field])) $params[$field] = $args[$field];
+            }
         }
 
         return new static($params);
