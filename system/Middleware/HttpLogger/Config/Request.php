@@ -4,12 +4,10 @@ declare(strict_types=1);
 
 namespace SlimEdge\Middleware\HttpLogger\Config;
 
-use RuntimeException;
-use Slim\Interfaces\RouteInterface;
-use SlimEdge\Entity\Collection;
-
 class Request
 {
+    use ConfigTrait;
+
     /**
      * @var ?int $maxBody
      */
@@ -70,27 +68,11 @@ class Request
      */
     public $ignoreRoutes = null;
 
-    /**
-     * @var ?resource
-     */
-    public $tempBodyResource = null;
-
     public function __construct($config = null)
     {
         if(!is_null($config)) {
             $this->hydrate($config);
-        }
-    }
-
-    public function __destruct()
-    {
-        $this->closeTemp();
-    }
-
-    public function closeTemp()
-    {
-        if(!is_null($this->tempBodyResource)) {
-            fclose($this->tempBodyResource);
+            $this->cleanDuplicate();
         }
     }
 
@@ -152,10 +134,11 @@ class Request
         }
 
         if($headers = $this->getConfigItemArray($config, 'headers')) {
-            $this->headers = array_map($this->normalizeHeader, $headers);
+            $this->headers = array_map([$this, 'normalizeHeader'], $headers);
         }
 
         if($addHeaders = $this->getConfigItemArray($config, 'addHeaders')) {
+            $addHeaders = array_map([$this, 'normalizeHeader'], $addHeaders);
             if(is_array($this->headers)) {
                 $this->headers = array_merge($this->headers, $addHeaders);
             }
@@ -165,7 +148,7 @@ class Request
         }
 
         if($ignoreHeaders = $this->getConfigItemArray($config, 'ignoreHeaders')) {
-            $ignoreHeaders = array_map($this->normalizeHeader, $headers);
+            $ignoreHeaders = array_map([$this, 'normalizeHeader'], $headers);
             if(is_array($this->headers)) {
                 $headers = [];
                 foreach($this->headers as $header) {
@@ -199,8 +182,6 @@ class Request
             }
             else $this->ignoreRoutes = $ignoreRoutes;
         }
-        
-        $this->cleanDuplicate();
     }
 
     private function cleanDuplicate() {
@@ -229,11 +210,6 @@ class Request
         }
     }
 
-    public function override($config)
-    {
-        $this->hydrate($config);
-    }
-
     public function checkMethod($method)
     {
         if(!is_null($this->methods) && !in_array($method, $this->methods)) {
@@ -245,72 +221,5 @@ class Request
         }
 
         return true;
-    }
-
-    public function filterHeaders($headers)
-    {
-        if(!is_null($this->headers)) {
-            $newHeaders = [];
-            foreach($this->headers as $header) {
-                if(isset($headers[$header])) {
-                    $newHeaders[$header] = $headers[$header];
-                }
-            }
-        }
-        else $newHeaders = $headers;
-
-        if(!is_null($this->ignoreHeaders)) {
-            foreach($this->ignoreHeaders as $header) {
-                unset($newHeaders[$header]);
-            }
-        }
-
-        return $newHeaders;
-    }
-
-    /**
-     * @param RouteInterface $route
-     */
-    public function checkRoute($route)
-    {
-        if(is_null($route) || is_null($routeName = $route->getName())) {
-            return true;
-        }
-
-        if(!is_null($this->routes) && !in_array($routeName, $this->routes)) {
-            return false;
-        }
-
-        if(!is_null($this->ignoreRoutes) && in_array($routeName, $this->ignoreRoutes)) {
-            return false;
-        }
-
-        return true;
-    }
-
-    private function getConfigItemArray($config, $key): ?array
-    {
-        if(isset($config[$key])) {
-            $configItem = $config[$key];
-            if($configItem instanceof Collection) {
-                $configItem = $configItem->all();
-            }
-            elseif(is_string($configItem)) {
-                $configItem = [$configItem];
-            }
-            else {
-                throw new RuntimeException("Could not resolve '$key' value from config");
-            }
-
-            return $configItem;
-        }
-        return null;
-    }
-
-    private function normalizeHeader($value)
-    {
-        $value = strtolower($value);
-        $value = str_replace('_', '-', $value);
-        return $value;
     }
 }

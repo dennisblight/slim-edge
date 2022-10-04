@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace SlimEdge\Middleware\HttpLogger;
 
+use Slim\Interfaces\RouteInterface;
+
 class Config
 {
     /**
@@ -20,6 +22,8 @@ class Config
      * @var ?string $writer
      */
     public $writer;
+
+    public $routes;
 
     /**
      * @var Config\Request $logRequest
@@ -61,5 +65,20 @@ class Config
             $this->logResponse = new Config\Response($config['logResponse']);
         }
         else $this->logResponse = new Config\Response;
+
+        if(isset($config['routes'])) {
+            $this->routes = $config['routes'];
+        }
+    }
+
+    public function getConfigForRoute(RouteInterface $route, string $key)
+    {
+        if(!empty($route->getName()) && is_array($this->routes)) {
+            if(isset($this->routes[$route->getName()][$key])) {
+                return $this->routes[$route->getName()][$key];
+            }
+        }
+
+        return null;
     }
 }

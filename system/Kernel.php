@@ -53,16 +53,20 @@ class Kernel
         assert_options(ASSERT_WARNING, 0);
         assert_options(ASSERT_EXCEPTION, 1);
 
-        $bs = new static;
+        set_error_handler(function($errno, $errstr, $errfile, $errline) {
+            if (0 === error_reporting()) {
+                return false;
+            }
 
-        // $stopwatch = new Stopwatch();
-        // $stopwatch->start('booting');
+            throw new \ErrorException($errstr, 0, $errno, $errfile, $errline);
+        });
+
+        $bs = new static;
 
         $config = $bs->loadConfig();
         $builder = $bs->createBuilder($config);
 
         static::$container = $builder->build();
-        // static::$container->set(Stopwatch::class, $stopwatch);
         static::$app = DI\Bridge\Slim\Bridge::create(static::$container);
         $bs->registerMiddleware($config);
         $bs->registerErrorHandler($config);

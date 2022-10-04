@@ -51,14 +51,9 @@ class HttpLoggerMiddleware implements MiddlewareInterface
     private $registry;
 
     /**
-     * @var string $requestBodyHash
+     * @var string $bodyHash
      */
-    private $requestBodyHash;
-
-    /**
-     * @var \HashContext $requestHash
-     */
-    private $requestHash;
+    private $bodyHash;
 
     /**
      * @var StreamInterface $bodyStream
@@ -72,9 +67,11 @@ class HttpLoggerMiddleware implements MiddlewareInterface
 
     public function __construct(ContainerInterface $container)
     {
-        $this->config = $container->get('config.http_logger');
         $this->registry = $container->get('registry');
         $this->streamFactory = $container->get(StreamFactoryInterface::class);
+
+        $config = $container->get('config.http_logger');
+        $this->config = new Config($config);
     }
 
     public function process(
@@ -82,7 +79,11 @@ class HttpLoggerMiddleware implements MiddlewareInterface
         RequestHandlerInterface $handler
     ): ResponseInterface
     {
+        $this->writeRequest($request);
+
         $response = $handler->handle($request);
+
+        $this->writeResponse($request, $response);
 
         // $arguments = $this->getArguments($request);
         // if($arguments['ignoreHttpLog']) {
@@ -113,7 +114,10 @@ class HttpLoggerMiddleware implements MiddlewareInterface
             return;
         }
 
-        // if($route->getName() && $config->)
+        $routeConfig = $this->config->getConfigForRoute($route, 'logRequest');
+        if($routeConfig) {
+            $config->override($routeConfig);
+        }
 
         if(!$config->checkMethod($request->getMethod())) {
             return;
@@ -137,12 +141,13 @@ class HttpLoggerMiddleware implements MiddlewareInterface
             'uploadedFiles' => null,
         ];
 
-        $this->requestHash = hash_init('md5');
-        hash_update($this->requestHash, 'request');
-        hash_update($this->requestHash, "|{$logOption['dateTime']}");
-        hash_update($this->requestHash, "|{$logOption['method']}");
-        hash_update($this->requestHash, "|{$logOption['ipAddress']}");
-        hash_update($this->requestHash, "|{$logOption['url']}");
+        $requestHash = hash_init('md5');
+        hash_update($requestHash, 'request');
+        hash_update($requestHash, "|{$logOption['datetime']}");
+        hash_update($requestHash, "|{$logOption['method']}");
+        hash_update($requestHash, "|{$logOption['ipAddress']}");
+        hash_update($requestHash, "|{$logOption['url']}");
+        hash_update($requestHash, "|" . json_encode($logOption['headers']));
 
         if($config->maxBody && $logOption['bodySize'] > $config->maxBody) {
             if($config->ignoreOnMax) {
@@ -166,12 +171,10 @@ class HttpLoggerMiddleware implements MiddlewareInterface
         if($config->logBody) {
             $logOption['logContext'] |= self::ContextBody;
             switch($logOption['bodyContext']) {
-                case self::BodyIgnored:
-                $logOption['body'] = null;
-                break;
+                case self::BodyIgnored: break;
 
                 case self::BodyToFile:
-                $logOption['body'] = $this->writeStreamToFile($this->bodyStream, $this->requestBodyHash);
+                $logOption['body'] = $this->writeStreamToFile($this->bodyStream, $this->bodyHash);
                 break;
 
                 default:
@@ -187,17 +190,87 @@ class HttpLoggerMiddleware implements MiddlewareInterface
             $logOption['uploadedFiles'] = $this->processUploadedFiles($request->getUploadedFiles());
         }
 
-        hash_update($this->requestHash, "|" . json_encode($logOption['headers']));
-        hash_update($this->requestHash, "|{$logOption['logContext']}");
-        hash_update($this->requestHash, "|" . json_encode($logOption['queryParams']));
-        hash_update($this->requestHash, "|" . json_encode($logOption['formData']));
-        hash_update($this->requestHash, "|{$logOption['bodySize']}");
-        hash_update($this->requestHash, "|{$logOption['bodyContext']}");
-        hash_update($this->requestHash, "|{$this->requestBodyHash}");
-        hash_update($this->requestHash, "|" . json_encode($logOption['uploadedFiles']));
+        hash_update($requestHash, "|{$logOption['logContext']}");
+        hash_update($requestHash, "|" . json_encode($logOption['queryParams']));
+        hash_update($requestHash, "|" . json_encode($logOption['formData']));
+        hash_update($requestHash, "|{$logOption['bodySize']}");
+        hash_update($requestHash, "|{$logOption['bodyContext']}");
+        hash_update($requestHash, "|{$this->bodyHash}");
+        hash_update($requestHash, "|" . json_encode($logOption['uploadedFiles']));
 
-        $logOption['hash'] = hash_final($this->requestHash);
+        $logOption['hash'] = hash_final($requestHash);
         $this->registry->set('requestHash', $logOption['hash']);
+    }
+
+    private function writeResponse(ServerRequestInterface $request, ResponseInterface $response)
+    {
+        $writer = $this->getWriter();
+        if(!$writer) return;
+
+        $config = $this->config->logResponse;
+
+        $route = RouteContext::fromRequest($request)->getRoute();
+        if(!$config->checkRoute($route)) {
+            return;
+        }
+
+        $routeConfig = $this->config->getConfigForRoute($route, 'logResponse');
+        if($routeConfig) {
+            $config->override($routeConfig);
+        }
+
+        if(!$config->checkStatusCode($response->getStatusCode())) {
+            return;
+        }
+
+        $dateTime = new \DateTime();
+
+        $logOption = [
+            'type'          => 'response',
+            'datetime'      => $dateTime->format(\DateTime::RFC3339_EXTENDED),
+            'requestHash'   => $this->registry->requestHash,
+            'headers'       => $config->filterHeaders($response->getHeaders()),
+            'bodySize'      => $this->processBody($response->getBody()),
+            'bodyContext'   => self::BodyContent,
+            'body'          => null,
+        ];
+
+        $responseHash = hash_init('md5');
+        hash_update($responseHash, 'response');
+        hash_update($responseHash, "|{$logOption['datetime']}");
+        hash_update($responseHash, "|{$logOption['requestHash']}");
+        hash_update($responseHash, "|" . json_encode($logOption['headers']));
+
+        if($config->maxBody && $logOption['bodySize'] > $config->maxBody) {
+            if($config->ignoreOnMax) {
+                $logOption['bodyContext'] = self::BodyIgnored;
+            }
+            else {
+                $logOption['bodyContext'] = self::BodyToFile;
+            }
+        }
+
+        if($config->logBody) {
+            switch($logOption['bodyContext']) {
+                case self::BodyIgnored: break;
+
+                case self::BodyToFile:
+                $logOption['body'] = $this->writeStreamToFile($this->bodyStream, $this->bodyHash);
+                break;
+
+                default:
+                $logOption['body'] = $this->getBodyContent();
+                break;
+            }
+        }
+        else $logOption['bodyContext'] = self::BodyIgnored;
+
+        hash_update($responseHash, "|{$logOption['bodySize']}");
+        hash_update($responseHash, "|{$logOption['bodyContext']}");
+        hash_update($responseHash, "|{$this->bodyHash}");
+
+        $logOption['hash'] = hash_final($responseHash);
+        $this->registry->set('responseHash', $logOption['hash']);
     }
 
     private function processUploadedFiles(array $uploadedFiles)
@@ -228,10 +301,10 @@ class HttpLoggerMiddleware implements MiddlewareInterface
             $length = strlen($content);
             $size += $length;
             $this->bodyStream->write($content);
-            hash_update($hash, $content, $length);
+            hash_update($hash, $content);
         }
 
-        $this->requestBodyHash = hash_final($hash);
+        $this->bodyHash = hash_final($hash);
 
         return $size;
     }

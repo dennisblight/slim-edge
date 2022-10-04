@@ -4,11 +4,10 @@ declare(strict_types=1);
 
 namespace SlimEdge\Middleware\HttpLogger\Config;
 
-use RuntimeException;
-use SlimEdge\Entity\Collection;
-
 class Response
 {
+    use ConfigTrait;
+
     /**
      * @var ?int $maxBody
      */
@@ -18,6 +17,11 @@ class Response
      * @var bool $ignoreOnMax
      */
     public $ignoreOnMax = false;
+
+    /**
+     * @var bool $logBody
+     */
+    public $logBody = true;
 
     /**
      * @var ?string[] $statusCodes
@@ -58,20 +62,27 @@ class Response
 
     private function hydrate($config)
     {
-        if(isset($config['ignoreOnMax'])) {
-            $this->ignoreOnMax = boolval($config['ignoreOnMax']);
-        }
-
         if(isset($config['maxBody'])) {
             $this->maxBody = intval($config['maxBody']);
+        }
+
+        if(isset($config['ignoreOnMax'])) {
+            $this->ignoreOnMax = boolval($config['ignoreOnMax']);
         }
 
         if($statusCodes = $this->getConfigItemArray($config, 'statusCodes')) {
             $this->statusCodes = $statusCodes;
         }
 
+        if($addStatusCodes = $this->getConfigItemArray($config, 'addStatusCodes')) {
+            if(is_array($this->statusCodes)) {
+                $this->statusCodes = array_merge($this->statusCodes, $addStatusCodes);
+            }
+            else $this->statusCodes = $addStatusCodes;
+        }
+
         if($ignoreStatusCodes = $this->getConfigItemArray($config, 'ignoreStatusCodes')) {
-            if($this->statusCodes) {
+            if(is_array($this->statusCodes)) {
                 $statusCodes = [];
                 foreach($this->statusCodes as $method) {
                     if(!in_array($method, $ignoreStatusCodes)) {
@@ -81,24 +92,30 @@ class Response
 
                 $this->statusCodes = $statusCodes;
             }
+            elseif(is_array($this->ignoreStatusCodes)) {
+                $this->ignoreStatusCodes = array_merge($this->ignoreStatusCodes, $ignoreStatusCodes);
+            }
             else $this->ignoreStatusCodes = $ignoreStatusCodes;
         }
 
         if($headers = $this->getConfigItemArray($config, 'headers')) {
-            $this->headers = array_map($this->normalizeHeader, $headers);
+            $this->headers = array_map([$this, 'normalizeHeader'], $headers);
         }
 
         if($ignoreHeaders = $this->getConfigItemArray($config, 'ignoreHeaders')) {
-            if($this->headers) {
+            $ignoreHeaders = array_map([$this, 'normalizeHeader'], $ignoreHeaders);
+            if(is_array($this->headers)) {
                 $headers = [];
                 foreach($this->headers as $header) {
-                    $header = $this->normalizeHeader($header);
                     if(!in_array($header, $config)) {
                         $headers[] = $header;
                     }
                 }
 
                 $this->headers = $headers;
+            }
+            elseif(is_array($this->ignoreHeaders)) {
+                $this->ignoreHeaders = array_merge($this->ignoreHeaders, $ignoreHeaders);
             }
             else $this->ignoreHeaders = $ignoreHeaders;
         }
@@ -108,7 +125,7 @@ class Response
         }
 
         if($ignoreRoutes = $this->getConfigItemArray($config, 'ignoreRoutes')) {
-            if($this->routes) {
+            if(is_array($this->routes)) {
                 $routes = [];
                 foreach($this->routes as $route) {
                     if(!in_array($route, $ignoreRoutes)) {
@@ -122,29 +139,57 @@ class Response
         }
     }
 
-    private function getConfigItemArray($config, $key): ?array
+    private function cleanDuplicate()
     {
-        if(isset($config[$key])) {
-            $configItem = $config[$key];
-            if($configItem instanceof Collection) {
-                $configItem = $configItem->all();
-            }
-            elseif(is_string($configItem)) {
-                $configItem = [$configItem];
-            }
-            else {
-                throw new RuntimeException("Could not resolve '$key' value from config");
-            }
-
-            return $configItem;
+        if(is_array($this->statusCodes)) {
+            $this->statusCodes = array_unique($this->statusCodes);
         }
-        return null;
+
+        if(is_array($this->ignoreStatusCodes)) {
+            $this->ignoreStatusCodes = array_unique($this->ignoreStatusCodes);
+        }
+
+        if(is_array($this->headers)) {
+            $this->headers = array_unique($this->headers);
+        }
+
+        if(is_array($this->ignoreHeaders)) {
+            $this->ignoreHeaders = array_unique($this->ignoreHeaders);
+        }
+
+        if(is_array($this->routes)) {
+            $this->routes = array_unique($this->routes);
+        }
+
+        if(is_array($this->ignoreRoutes)) {
+            $this->ignoreRoutes = array_unique($this->ignoreRoutes);
+        }
     }
 
-    private function normalizeHeader($value)
+    public function checkStatusCode($statusCode)
     {
-        $value = strtolower($value);
-        $value = str_replace('_', '-', $value);
-        return $value;
+        if(!is_null($this->statusCodes)) {
+
+            if(!in_array($statusCode, $this->statusCodes)) {
+                return false;
+            }
+            
+            if(!in_array(intdiv($statusCode, 100) . 'xx', $this->statusCodes)) {
+                return false;
+            }
+        }
+
+        if(!is_null($this->ignoreStatusCodes)) {
+
+            if(in_array($statusCode, $this->ignoreStatusCodes)) {
+                return false;
+            }
+
+            if(in_array(intdiv($statusCode, 100) . 'xx', $this->ignoreStatusCodes)) {
+                return false;
+            }
+        }
+
+        return true;
     }
 }
