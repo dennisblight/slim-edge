@@ -30,6 +30,7 @@ return [
         SlimEdge\Middleware\TrimSlashes::class,
         SlimEdge\Middleware\CorsMiddleware::class,
         SlimEdge\Middleware\ProfilingMiddeware::class,
+        SlimEdge\Middleware\HttpLogger\HttpLoggerMiddleware::class,
     ],
 
     'errors' => [

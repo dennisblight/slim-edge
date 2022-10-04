@@ -11,16 +11,16 @@ use Psr\Http\Message\ServerRequestInterface;
 class Index
 {
     /**
-     * @Route\Get("/", "index")
+     * @Route\Post("/")
      */
-    public function indexGet()
+    public function indexGet(ServerRequestInterface $request)
     {
-        return new Response\JsonResponse("OK");
+        $body = $request->getBody();
+        return new Response\JsonResponse($_POST);
     }
 
     /**
      * @Route\Get("/example", "example")
-     * @Route\Post("/example")
      */
     public function exampleGet()
     {

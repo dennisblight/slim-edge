@@ -4,16 +4,18 @@ declare(strict_types=1);
 
 use SlimEdge\Paths;
 use SlimEdge\Kernel;
+use SlimEdge\Entity\Collection;
 use Psr\SimpleCache\CacheInterface;
 use Phpfastcache\Helper\Psr16Adapter;
 use Psr\Cache\CacheItemPoolInterface;
 use Psr\Container\ContainerInterface;
 use Doctrine\Common\Annotations\Reader;
-use function SlimEdge\Helpers\enable_cache;
 use Psr\Http\Message\ServerRequestInterface;
 use Doctrine\Common\Annotations\PsrCachedReader;
-
 use Doctrine\Common\Annotations\AnnotationReader;
+use Psr\Http\Message\StreamFactoryInterface;
+
+use function SlimEdge\Helpers\enable_cache;
 
 return [
     'settings'      => \DI\get('config'),
@@ -44,5 +46,13 @@ return [
         }
 
         return $reader;
+    }),
+
+    'registry' => function() {
+        return new Collection();
+    },
+
+    StreamFactoryInterface::class => \DI\Factory(function() {
+        return new \Laminas\Diactoros\StreamFactory();
     }),
 ];

@@ -2,7 +2,7 @@
     RewriteEngine On
     RewriteCond %{REQUEST_FILENAME} !-f
     RewriteCond %{REQUEST_FILENAME} !-d
-    RewriteRule ^ index.php/$1 [L]
+    RewriteRule ^ /index.php/$1 [L]
 
     RewriteCond %{REQUEST_FILENAME} -f
     RewriteCond %{REQUEST_FILENAME} -s
@@ -21,7 +21,7 @@
     ErrorDocument 501 "/errors/501.php"
 </IfModule>
 
-LimitRequestBody 2000
+LimitRequestBody 2048000
 Options -Indexes
 
 SetEnvIf SERVER_ADDR "^(?:127\.0\.0\.\d+|::1)" ENV=development

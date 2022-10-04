@@ -37,18 +37,17 @@ class FileWriter extends BaseWriter
         ];
 
         $body = (string) $request->getBody();
-        if(mb_strlen($body) > 5e5 || is_binary($body)) {
+        if (mb_strlen($body) > 5e5 || is_binary($body)) {
             $log['isFile'] = true;
             $log['body'] = $this->writeBodyToFile($body);
-        }
-        else {
+        } else {
             $log['body'] = $body;
         }
 
         $hash = md5(json_encode($log));
         $log['hash'] = $hash;
-        
-        if(Kernel::$container->has('registry')) {
+
+        if (Kernel::$container->has('registry')) {
             $registry = Kernel::$container->get('registry');
             $registry->set('requestHash', $hash);
         }
@@ -64,27 +63,25 @@ class FileWriter extends BaseWriter
             $logJson = json_encode($log);
             $path = array_item($this->config, 'path', BASEPATH . '/storage/logs/http');
             $path .= '/' . date('Ym');
-            if(!file_exists($path)) {
+            if (!file_exists($path)) {
                 mkdir($path, 0777, true);
             }
 
             $filePath = sprintf('%s/log_%s.log', $path, date('Y-m-d'));
 
             $maxSize = array_item($this->config, 'max_file_size', false);
-            if($maxSize !== false && file_exists($filePath) && filesize($filePath) > $maxSize) {
+            if ($maxSize !== false && file_exists($filePath) && filesize($filePath) > $maxSize) {
                 $number = 1;
                 do {
                     $filePath = sprintf('%s/log_%s_%s.log', $path, date('Y-m-d'), str_pad_left($number, 4, '0'));
                     $number++;
-                }
-                while(file_exists($filePath) && filesize($filePath) > $maxSize);
+                } while (file_exists($filePath) && filesize($filePath) > $maxSize);
             }
 
             $stream = fopen($filePath, 'a');
             fwrite($stream, $logJson . ',' . PHP_EOL);
             fclose($stream);
-        }
-        catch(Exception $ex) {
+        } catch (Exception $ex) {
             return false;
         }
 
@@ -94,24 +91,24 @@ class FileWriter extends BaseWriter
     protected function cleanRequestHeaders($headers)
     {
         $ignoredHeaders = array_item($this->config, 'ignore_headers');
-        if(is_null($ignoredHeaders)) return $headers;
+        if (is_null($ignoredHeaders)) return $headers;
 
-        $ignoredHeaders = array_map(function($item) {
+        $ignoredHeaders = array_map(function ($item) {
             return 'HTTP_' . str_replace('-', '_', strtoupper($item));
-        }, $ignoredHeaders);
+        }, $ignoredHeaders->all());
 
-        $headers = array_filter($headers, function($item) use ($ignoredHeaders) {
+        $headers = array_filter($headers, function ($item) use ($ignoredHeaders) {
             return !in_array($item, $ignoredHeaders);
         }, ARRAY_FILTER_USE_KEY);
 
-        return array_map(function($item) {
+        return array_map(function ($item) {
             return count($item) == 1 ? $item[0] : $item;
         }, $headers);
     }
 
     protected function cleanResponseHeaders($headers)
     {
-        return array_map(function($item) {
+        return array_map(function ($item) {
             return count($item) == 1 ? $item[0] : $item;
         }, $headers);
     }
@@ -134,16 +131,15 @@ class FileWriter extends BaseWriter
         ];
 
         $body = (string) $response->getBody();
-        if(mb_strlen($body) > 5e5 || is_binary($body)) {
+        if (mb_strlen($body) > 5e5 || is_binary($body)) {
             $log['isFile'] = true;
             $log['body'] = $this->writeBodyToFile($body);
-        }
-        else {
+        } else {
             $log['body'] = $body;
         }
 
         $log['hash'] = md5(json_encode($log));
-        
+
         $this->writeLog($log);
     }
 
@@ -155,22 +151,23 @@ class FileWriter extends BaseWriter
         $hash = md5($string);
         $size = mb_strlen($string);
 
-        if($size <= $this->getMaxLength() && !array_item($this->config, 'ignore_file', false)) {
+        if ($size <= $this->getMaxLength() && !array_item($this->config, 'ignore_file', false)) {
             try {
                 $path = array_item($this->config, 'path', BASEPATH . '/storage/logs/http');
-                $path .= '/files/' . substr($hash,0 , 2);
-                if(!file_exists($path)) {
+                $path .= '/files/' . substr($hash, 0, 2);
+                if (!file_exists($path)) {
                     mkdir($path, 0777, true);
                 }
 
                 $file = $path . '/' . $hash;
-                if(!file_exists($file)) {
+                if (!file_exists($file)) {
                     $stream = fopen($path . '/' . $hash, 'w');
                     fwrite($stream, $string);
                     fclose($stream);
                 }
+            } catch (Exception $ex) {
+                /** Ignored */
             }
-            catch(Exception $ex) { /** Ignored */ }
         }
 
         $finfo = new finfo(FILEINFO_MIME);
