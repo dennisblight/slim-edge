@@ -99,29 +99,16 @@ class HttpLoggerMiddleware implements MiddlewareInterface
         $writer = $this->getWriter();
         if(!$writer || !$this->config->logErrors) return;
 
-        $dateTime = new \DateTime();
-        $logOption = [
-            'type'         => 'error',
-            'datetime'     => $dateTime->format(\DateTime::RFC3339_EXTENDED),
+        $logData = new LogData('error', [
             'requestHash'  => $this->registry->get('requestHash'),
             'errorClass'   => get_class($ex),
             'errorCode'    => $ex->getCode(),
             'errorMessage' => $ex->getMessage(),
             'errorFile'    => $ex->getFile(),
             'errorLine'    => $ex->getLine(),
-        ];
+        ]);
 
-        $hashContext = hash_init('md5');
-        hash_update($hashContext, 'error');
-        hash_update($hashContext, "|{$logOption['datetime']}");
-        hash_update($hashContext, "|{$logOption['requestHash']}");
-        hash_update($hashContext, "|{$logOption['errorClass']}");
-        hash_update($hashContext, "|{$logOption['errorCode']}");
-        hash_update($hashContext, "|{$logOption['errorMessage']}");
-        hash_update($hashContext, "|{$logOption['errorFile']}");
-        hash_update($hashContext, "|{$logOption['errorLine']}");
-
-        $logOption['hash'] = hash_final($hashContext);
+        $logOption = $logData->finish();
         $this->registry->set('errorHash', $logOption['hash']);
 
         $writer->writeLog($logOption);
