@@ -12,6 +12,7 @@ class Index
 {
     /**
      * @Route\Get("/", "index")
+     * @Route\Post("/")
      */
     public function indexGet(ServerRequestInterface $request)
     {

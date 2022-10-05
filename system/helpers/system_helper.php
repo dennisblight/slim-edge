@@ -37,7 +37,7 @@ if(! function_exists('SlimEdge\Helpers\enable_cache'))
     }
 }
 
-if(!function_exists('uuid_format'))
+if(!function_exists('SlimEdge\Helpers\uuid_format'))
 {
     function uuid_format($uuid)
     {

@@ -10,7 +10,6 @@ use Psr\Container\ContainerInterface;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Server\MiddlewareInterface;
 use Psr\Http\Message\ServerRequestInterface;
-use Psr\Http\Message\StreamFactoryInterface;
 use Psr\Http\Message\StreamInterface;
 use Psr\Http\Message\UploadedFileInterface;
 use Psr\Http\Server\RequestHandlerInterface;
@@ -53,25 +52,9 @@ class HttpLoggerMiddleware implements MiddlewareInterface
      */
     private $registry;
 
-    /**
-     * @var string $bodyHash
-     */
-    private $bodyHash;
-
-    /**
-     * @var StreamInterface $bodyStream
-     */
-    private $bodyStream;
-
-    /**
-     * @var StreamFactoryInterface $streamFactory
-     */
-    private $streamFactory;
-
     public function __construct(ContainerInterface $container)
     {
         $this->registry = $container->get('registry');
-        $this->streamFactory = $container->get(StreamFactoryInterface::class);
         $this->initConfig($container);
     }
 
@@ -165,82 +148,70 @@ class HttpLoggerMiddleware implements MiddlewareInterface
             return;
         }
 
-        $dateTime = new \DateTime();
+        $streamAnalyzer = $this->analyzeStream($request->getBody());
 
-        $logOption = [
-            'type'          => 'request',
-            'datetime'      => $dateTime->format(\DateTime::RFC3339_EXTENDED),
-            'method'        => $request->getMethod(),
-            'ipAddress'     => get_real_ip_address(),
-            'url'           => (string) $request->getUri(),
-            'headers'       => $config->filterHeaders($request->getHeaders()),
-            'bodySize'      => $this->processBody($request->getBody()),
-            'bodyContext'   => self::BodyContent,
-            'logContext'    => self::ContextNone,
-            'queryParams'   => null,
-            'formData'      => null,
-            'body'          => null,
-            'uploadedFiles' => null,
-        ];
+        $logData = new LogData('request', [
+            'method'    => $request->getMethod(),
+            'ipAddress' => get_real_ip_address(),
+            'url'       => (string) $request->getUri(),
+            'headers'   => $config->filterHeaders($request->getHeaders()),
+            'bodySize'  => $streamAnalyzer->size,
+        ]);
 
-        $requestHash = hash_init('md5');
-        hash_update($requestHash, 'request');
-        hash_update($requestHash, "|{$logOption['datetime']}");
-        hash_update($requestHash, "|{$logOption['method']}");
-        hash_update($requestHash, "|{$logOption['ipAddress']}");
-        hash_update($requestHash, "|{$logOption['url']}");
-        hash_update($requestHash, "|" . json_encode($logOption['headers']));
+        $bodyContext = self::BodyContent;
+        $logContext = self::ContextNone;
+        $queryParams = null;
+        $formData = null;
+        $body = null;
+        $uploadedFiles = null;
 
-        if($config->maxBody && $logOption['bodySize'] > $config->maxBody) {
+        if($streamAnalyzer->isBinary || ($config->maxBody && $streamAnalyzer->size > $config->maxBody)) {
             if($config->ignoreOnMax) {
-                $logOption['bodyContext'] = self::BodyIgnored;
+                $bodyContext = self::BodyIgnored;
             }
             else {
-                $logOption['bodyContext'] = self::BodyToFile;
+                $bodyContext = self::BodyToFile;
             }
         }
 
         if($config->logQuery) {
-            $logOption['logContext'] |= self::ContextQuery;
-            $logOption['queryParams'] = $request->getQueryParams();
+            $logContext |= self::ContextQuery;
+            $queryParams = $request->getQueryParams();
         }
 
         if($config->logFormData) {
-            $logOption['logContext'] |= self::ContextFormData;
-            $logOption['formData'] = $request->getParsedBody();
+            $logContext |= self::ContextFormData;
+            $formData = $request->getParsedBody();
         }
 
         if($config->logBody) {
-            $logOption['logContext'] |= self::ContextBody;
-            switch($logOption['bodyContext']) {
+            $logContext |= self::ContextBody;
+            switch($bodyContext) {
                 case self::BodyIgnored: break;
 
                 case self::BodyToFile:
-                $logOption['body'] = $this->writeStreamToFile($this->bodyStream, $this->bodyHash);
+                $body = $this->storeAnalyzedStream($streamAnalyzer);
                 break;
 
                 default:
-                $logOption['body'] = $this->getBodyContent();
+                $body = (string) $request->getBody();
                 break;
             }
         }
 
-        $this->bodyStream->close();
-
         if($config->logUploadedFiles) {
-            $logOption['logContext'] |= self::ContextUploadedFiles;
-            $logOption['uploadedFiles'] = $this->processUploadedFiles($request->getUploadedFiles());
+            $logContext |= self::ContextUploadedFiles;
+            $uploadedFiles = $this->processUploadedFiles($request->getUploadedFiles());
         }
 
-        hash_update($requestHash, "|{$logOption['logContext']}");
-        hash_update($requestHash, "|" . json_encode($logOption['queryParams']));
-        hash_update($requestHash, "|" . json_encode($logOption['formData']));
-        hash_update($requestHash, "|{$logOption['bodySize']}");
-        hash_update($requestHash, "|{$logOption['bodyContext']}");
-        hash_update($requestHash, "|{$this->bodyHash}");
-        hash_update($requestHash, "|" . json_encode($logOption['uploadedFiles']));
+        $logData->append('bodyContext', $bodyContext);
+        $logData->append('logContext', $logContext);
+        $logData->append('queryParams', $queryParams);
+        $logData->append('formData', $formData);
+        $logData->append('body', $body, $streamAnalyzer->hash);
+        $logData->append('uploadedFiles', $uploadedFiles);
 
-        $logOption['hash'] = hash_final($requestHash);
+        $logOption = $logData->finish();
         $this->registry->set('requestHash', $logOption['hash']);
         $writer->writeLog($logOption);
     }
@@ -266,53 +237,45 @@ class HttpLoggerMiddleware implements MiddlewareInterface
             return;
         }
 
-        $dateTime = new \DateTime();
+        $streamAnalyzer = $this->analyzeStream($response->getBody());
 
-        $logOption = [
-            'type'          => 'response',
-            'datetime'      => $dateTime->format(\DateTime::RFC3339_EXTENDED),
-            'requestHash'   => $this->registry->get('requestHash'),
-            'headers'       => $config->filterHeaders($response->getHeaders()),
-            'bodySize'      => $this->processBody($response->getBody()),
-            'bodyContext'   => self::BodyContent,
-            'body'          => null,
-        ];
+        $logData = new LogData('response', [
+            'requestHash' => $this->registry->get('requestHash'),
+            'headers'     => $config->filterHeaders($response->getHeaders()),
+            'bodySize'    => $streamAnalyzer->size,
+        ]);
 
-        $responseHash = hash_init('md5');
-        hash_update($responseHash, 'response');
-        hash_update($responseHash, "|{$logOption['datetime']}");
-        hash_update($responseHash, "|{$logOption['requestHash']}");
-        hash_update($responseHash, "|" . json_encode($logOption['headers']));
+        $bodyContext = self::BodyContent;
+        $body = null;
 
-        if($config->maxBody && $logOption['bodySize'] > $config->maxBody) {
+        if($streamAnalyzer->isBinary || ($config->maxBody && $streamAnalyzer->size > $config->maxBody)) {
             if($config->ignoreOnMax) {
-                $logOption['bodyContext'] = self::BodyIgnored;
+                $bodyContext = self::BodyIgnored;
             }
             else {
-                $logOption['bodyContext'] = self::BodyToFile;
+                $bodyContext = self::BodyToFile;
             }
         }
 
         if($config->logBody) {
-            switch($logOption['bodyContext']) {
+            switch($bodyContext) {
                 case self::BodyIgnored: break;
 
                 case self::BodyToFile:
-                $logOption['body'] = $this->writeStreamToFile($this->bodyStream, $this->bodyHash);
+                $body = $this->storeAnalyzedStream($streamAnalyzer);
                 break;
 
                 default:
-                $logOption['body'] = $this->getBodyContent();
+                $body = (string) $response->getBody();
                 break;
             }
         }
-        else $logOption['bodyContext'] = self::BodyIgnored;
+        else $bodyContext = self::BodyIgnored;
 
-        hash_update($responseHash, "|{$logOption['bodySize']}");
-        hash_update($responseHash, "|{$logOption['bodyContext']}");
-        hash_update($responseHash, "|{$this->bodyHash}");
+        $logData->append('bodyContext', $bodyContext);
+        $logData->append('body', $body, $streamAnalyzer->hash);
 
-        $logOption['hash'] = hash_final($responseHash);
+        $logOption = $logData->finish();
         $this->registry->set('responseHash', $logOption['hash']);
         $writer->writeLog($logOption);
     }
@@ -326,48 +289,25 @@ class HttpLoggerMiddleware implements MiddlewareInterface
             }
             else {
                 /** @var UploadedFileInterface $uploadedFile */
-                $result[$index] = $this->writeStreamToFile($uploadedFile->getStream());
+                $streamAnalyzer = $this->analyzeStream($uploadedFile->getStream());
+                $result[$index] = $this->storeAnalyzedStream($streamAnalyzer);
             }
         }
         return $result;
     }
 
-    private function processBody(StreamInterface $body)
+    private function analyzeStream(StreamInterface $stream)
     {
-        $body->rewind();
-        $resource = fopen('php://temp', 'w+');
-        $this->bodyStream = $this->streamFactory->createStreamFromResource($resource);
-        $hash = hash_init('md5');
-        $size = 0;
-
-        while(!$body->eof()) {
-            $content = $body->read(102400);
-            $length = strlen($content);
-            $size += $length;
-            $this->bodyStream->write($content);
-            hash_update($hash, $content);
-        }
-
-        $this->bodyHash = hash_final($hash);
-
-        return $size;
+        return (new StreamAnalyzer($stream))->analyze();
     }
 
-    private function writeStreamToFile(StreamInterface $sourceStream, ?string $hash = null)
+    /**
+     * Store analyzed stream to new log file as reference
+     * @return string File path relative to log path
+     */
+    private function storeAnalyzedStream(StreamAnalyzer $streamAnalyzer)
     {
-        if(is_null($hash)) {
-            $sourceStream->rewind();
-            $hashContext = hash_init('md5');
-            while(!$sourceStream->eof()) {
-                $content = $sourceStream->read(102400);
-                hash_update($hashContext, $content);
-            }
-            $hash = hash_final($hashContext);
-        }
-
-        $sourceStream->seek(-1, SEEK_END);
-        
-        $fileName = uuid_format($hash) . '-' . $sourceStream->tell();
+        $fileName = uuid_format($streamAnalyzer->hash) . '-' . $streamAnalyzer->size;
         $path = '/files/' . substr($fileName, 0, 2);
         $directory = $this->config->path . $path;
         if(!file_exists($directory)) {
@@ -376,10 +316,10 @@ class HttpLoggerMiddleware implements MiddlewareInterface
 
         $filePath = "$directory/$fileName";
         if(!file_exists($filePath)) {
-            $sourceStream->rewind();
+            $streamAnalyzer->stream->rewind();
             $stream = fopen($filePath, 'w+');
-            while(!$sourceStream->eof()) {
-                $content = $sourceStream->read(1024000);
+            while(!$streamAnalyzer->stream->eof()) {
+                $content = $streamAnalyzer->stream->read(1024000);
                 fwrite($stream, $content);
             }
 
@@ -387,11 +327,6 @@ class HttpLoggerMiddleware implements MiddlewareInterface
         }
 
         return "$path/$fileName";
-    }
-
-    private function getBodyContent()
-    {
-        return (string) $this->bodyStream;
     }
 
     /**
