@@ -11,11 +11,11 @@ use Psr\Http\Message\ServerRequestInterface;
 class Index
 {
     /**
-     * @Route\Post("/")
+     * @Route\Get("/", "index")
      */
     public function indexGet(ServerRequestInterface $request)
     {
-        $body = $request->getBody();
+        // $body = $request->getBody();
         return new Response\JsonResponse($_POST);
     }
 

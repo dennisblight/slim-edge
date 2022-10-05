@@ -9,6 +9,7 @@ use Slim\Exception\HttpException;
 
 return [
     // 'enableCache' => ['route', 'annotation', 'container'], // ['route', 'entity', 'container']'
+    // 'enableCache' => ['config'],
     'enableCache' => false,
 
     'annotationRouting' => true,

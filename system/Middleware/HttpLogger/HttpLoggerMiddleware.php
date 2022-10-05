@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace SlimEdge\Middleware\HttpLogger;
 
+use Exception;
 use Slim\Routing\RouteContext;
 use Psr\Container\ContainerInterface;
 use Psr\Http\Message\ResponseInterface;
@@ -14,7 +15,9 @@ use Psr\Http\Message\StreamInterface;
 use Psr\Http\Message\UploadedFileInterface;
 use Psr\Http\Server\RequestHandlerInterface;
 use SlimEdge\Entity\Collection;
+use SlimEdge\Paths;
 
+use function SlimEdge\Helpers\enable_cache;
 use function SlimEdge\Helpers\uuid_format;
 
 class HttpLoggerMiddleware implements MiddlewareInterface
@@ -69,9 +72,24 @@ class HttpLoggerMiddleware implements MiddlewareInterface
     {
         $this->registry = $container->get('registry');
         $this->streamFactory = $container->get(StreamFactoryInterface::class);
+        $this->initConfig($container);
+    }
+
+    private function initConfig(ContainerInterface $container)
+    {
+        $cacheEnabled = enable_cache('config');
+        if($cacheEnabled && file_exists($path = Paths::Cache . '/httpLogger/CompiledConfig.php')) {
+            require $path;
+            $this->config = new CompiledConfig;
+            return;
+        }
 
         $config = $container->get('config.http_logger');
         $this->config = new Config($config);
+
+        if($cacheEnabled) {
+            $this->config->compileConfig($path);
+        }
     }
 
     public function process(
@@ -79,30 +97,54 @@ class HttpLoggerMiddleware implements MiddlewareInterface
         RequestHandlerInterface $handler
     ): ResponseInterface
     {
-        $this->writeRequest($request);
-
-        $response = $handler->handle($request);
-
-        $this->writeResponse($request, $response);
-
-        // $arguments = $this->getArguments($request);
-        // if($arguments['ignoreHttpLog']) {
-        //     return $response;
-        // }
-
-        // $writerClass = $this->config->writer;
-        // if(is_subclass_of($writerClass, Writer\BaseWriter::class)) {
-        //     /** @var Writer\BaseWriter $writer */
-        //     $writer = is_object($writerClass) ? $writerClass : new $writerClass($this->config);
-        //     $result = $writer->logRequest($request);
-
-        //     $writer->logResponse($result, $response);
-        // }
-
-        return $response;
+        $this->logRequest($request);
+        try
+        {
+            $response = $handler->handle($request);
+            $this->logResponse($request, $response);
+            return $response;
+        }
+        catch(Exception $ex)
+        {
+            $this->logError($ex);
+            throw $ex;
+        }
     }
 
-    private function writeRequest(ServerRequestInterface $request)
+    private function logError(Exception $ex)
+    {
+        $writer = $this->getWriter();
+        if(!$writer || !$this->config->logErrors) return;
+
+        $dateTime = new \DateTime();
+        $logOption = [
+            'type'         => 'error',
+            'datetime'     => $dateTime->format(\DateTime::RFC3339_EXTENDED),
+            'requestHash'  => $this->registry->get('requestHash'),
+            'errorClass'   => get_class($ex),
+            'errorCode'    => $ex->getCode(),
+            'errorMessage' => $ex->getMessage(),
+            'errorFile'    => $ex->getFile(),
+            'errorLine'    => $ex->getLine(),
+        ];
+
+        $hashContext = hash_init('md5');
+        hash_update($hashContext, 'error');
+        hash_update($hashContext, "|{$logOption['datetime']}");
+        hash_update($hashContext, "|{$logOption['requestHash']}");
+        hash_update($hashContext, "|{$logOption['errorClass']}");
+        hash_update($hashContext, "|{$logOption['errorCode']}");
+        hash_update($hashContext, "|{$logOption['errorMessage']}");
+        hash_update($hashContext, "|{$logOption['errorFile']}");
+        hash_update($hashContext, "|{$logOption['errorLine']}");
+
+        $logOption['hash'] = hash_final($hashContext);
+        $this->registry->set('errorHash', $logOption['hash']);
+
+        $writer->writeLog($logOption);
+    }
+
+    private function logRequest(ServerRequestInterface $request)
     {
         $writer = $this->getWriter();
         if(!$writer) return;
@@ -130,7 +172,7 @@ class HttpLoggerMiddleware implements MiddlewareInterface
             'datetime'      => $dateTime->format(\DateTime::RFC3339_EXTENDED),
             'method'        => $request->getMethod(),
             'ipAddress'     => get_real_ip_address(),
-            'url'           => $request->getUri(),
+            'url'           => (string) $request->getUri(),
             'headers'       => $config->filterHeaders($request->getHeaders()),
             'bodySize'      => $this->processBody($request->getBody()),
             'bodyContext'   => self::BodyContent,
@@ -200,9 +242,10 @@ class HttpLoggerMiddleware implements MiddlewareInterface
 
         $logOption['hash'] = hash_final($requestHash);
         $this->registry->set('requestHash', $logOption['hash']);
+        $writer->writeLog($logOption);
     }
 
-    private function writeResponse(ServerRequestInterface $request, ResponseInterface $response)
+    private function logResponse(ServerRequestInterface $request, ResponseInterface $response)
     {
         $writer = $this->getWriter();
         if(!$writer) return;
@@ -210,7 +253,7 @@ class HttpLoggerMiddleware implements MiddlewareInterface
         $config = $this->config->logResponse;
 
         $route = RouteContext::fromRequest($request)->getRoute();
-        if(!$config->checkRoute($route)) {
+        if(!$this->config->logRequest->checkRoute($route) || !$config->checkRoute($route)) {
             return;
         }
 
@@ -228,7 +271,7 @@ class HttpLoggerMiddleware implements MiddlewareInterface
         $logOption = [
             'type'          => 'response',
             'datetime'      => $dateTime->format(\DateTime::RFC3339_EXTENDED),
-            'requestHash'   => $this->registry->requestHash,
+            'requestHash'   => $this->registry->get('requestHash'),
             'headers'       => $config->filterHeaders($response->getHeaders()),
             'bodySize'      => $this->processBody($response->getBody()),
             'bodyContext'   => self::BodyContent,
@@ -271,6 +314,7 @@ class HttpLoggerMiddleware implements MiddlewareInterface
 
         $logOption['hash'] = hash_final($responseHash);
         $this->registry->set('responseHash', $logOption['hash']);
+        $writer->writeLog($logOption);
     }
 
     private function processUploadedFiles(array $uploadedFiles)
@@ -350,6 +394,9 @@ class HttpLoggerMiddleware implements MiddlewareInterface
         return (string) $this->bodyStream;
     }
 
+    /**
+     * @return Writer\BaseWriter
+     */
     private function getWriter()
     {
         if(is_null($this->writer)) {

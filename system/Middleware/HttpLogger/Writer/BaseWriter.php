@@ -6,22 +6,19 @@ namespace SlimEdge\Middleware\HttpLogger\Writer;
 
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
+use SlimEdge\Middleware\HttpLogger\Config;
 
 abstract class BaseWriter
 {
-    protected $config = [];
+    /**
+     * @var Config $config
+     */
+    protected $config;
 
-    function __construct($config)
+    public function __construct(Config $config)
     {
         $this->config = $config;
     }
 
-    abstract public function logRequest(ServerRequestInterface $request): ?string;
-
-    abstract public function logResponse(?string $requestResult, ResponseInterface $response);
-
-    public function getMaxLength()
-    {
-        return array_item($this->config, 'max_length', INF);
-    }
+    public abstract function writeLog(array $logData);
 }

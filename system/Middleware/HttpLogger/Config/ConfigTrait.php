@@ -37,7 +37,25 @@ trait ConfigTrait
 
     public function checkRoute(RouteInterface $route)
     {
-        if(is_null($route) || is_null($routeName = $route->getName())) {
+        if(is_null($route)) {
+            return true;
+        }
+
+        $routeName = $route->getName();
+        if(is_null($routeName)) {
+            $routeAction = $route->getCallable();
+            if(is_string($routeAction)) {
+                $routeName = $routeAction;
+            }
+            elseif(is_array($routeAction)) {
+                $routeName = join(':', $routeAction);
+            }
+            elseif(is_object($routeAction)) {
+                $routeName = get_class($routeAction);
+            }
+        }
+
+        if(is_null($routeName)) {
             return true;
         }
 

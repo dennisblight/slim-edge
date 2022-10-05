@@ -1,7 +1,6 @@
 <?php
 
-if(!function_exists('array_item'))
-{
+if (!function_exists('array_item')) {
     /**
      * @param array $array
      * @param mixed $key
@@ -13,8 +12,7 @@ if(!function_exists('array_item'))
     }
 }
 
-if(!function_exists('get_item'))
-{
+if (!function_exists('get_item')) {
     /**
      * @param mixed $object
      * @param mixed $key
@@ -26,13 +24,11 @@ if(!function_exists('get_item'))
     }
 }
 
-if(!function_exists('array_map_with_key'))
-{
+if (!function_exists('array_map_with_key')) {
     function array_map_with_key($array, $key)
     {
         $result = [];
-        foreach($array as $item)
-        {
+        foreach ($array as $item) {
             $itemArray = (array) $item;
             $result[$itemArray[$key]] = $item;
         }
@@ -40,8 +36,7 @@ if(!function_exists('array_map_with_key'))
     }
 }
 
-if(!function_exists('coalesce'))
-{
+if (!function_exists('coalesce')) {
     /**
      * Null coalescing operator for the common case of needing to use
      * ternary conjuction with isset()
@@ -52,10 +47,8 @@ if(!function_exists('coalesce'))
     function coalesce()
     {
         $args = func_get_args();
-        foreach($args as $item)
-        {
-            if(!is_null($item))
-            {
+        foreach ($args as $item) {
+            if (!is_null($item)) {
                 return $item;
             }
         }
@@ -63,8 +56,7 @@ if(!function_exists('coalesce'))
     }
 }
 
-if(!function_exists('array_filter_use_both'))
-{
+if (!function_exists('array_filter_use_both')) {
     /**
      * Iterates over each value in the array passing them to the callback function.
      * If the callback function returns true, the current value from array is returned into the result array. Array keys are preserved.
@@ -79,13 +71,21 @@ if(!function_exists('array_filter_use_both'))
     function array_filter_use_both($array, $callable)
     {
         $result = [];
-        foreach($array as $key => $value)
-        {
-            if(call_user_func($callable, $key, $value))
-            {
+        foreach ($array as $key => $value) {
+            if (call_user_func($callable, $key, $value)) {
                 $result[$key] = $value;
             }
         }
         return $result;
+    }
+}
+
+if (!function_exists('array_is_list')) {
+    function array_is_list(array $array)
+    {
+        for ($i = 0; $i < count($array); $i++) {
+            if (!isset($array[$i])) return false;
+        }
+        return true;
     }
 }

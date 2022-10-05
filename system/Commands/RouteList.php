@@ -60,16 +60,16 @@ class RouteList extends Command
         else $searchBy = ['method', 'uri', 'name', 'action'];
         
         $actionResolver = function($item) {
+            
             if(is_array($item)) {
-                return $item[0] . '<fg=gray>:' . $item[1] . '</>';
+                $route = $item[0] . ':' . $item[1];
             }
             elseif(is_object($item)) {
-                if(method_exists($item, '__toString')) {
-                    return (string) $item;
-                }
-                return get_class($item);
+                $route = get_class($item);
             }
-            return $item;
+            else $route = (string) $item;
+
+            return str_replace(':', '<fg=gray>:', $route) . '</>';
         };
 
         $methodResolver = function($item) {
