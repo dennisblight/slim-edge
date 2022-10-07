@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace SlimEdge\Commands;
 
-use SebastianBergmann\Environment\Console;
 use Slim\Interfaces\RouteCollectorInterface;
 use SlimEdge\Kernel;
 use Symfony\Component\Console\Command\Command;

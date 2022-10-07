@@ -10,7 +10,8 @@ use Slim\Exception\HttpException;
 return [
     // 'enableCache' => ['route', 'annotation', 'container'], // ['route', 'entity', 'container']'
     // 'enableCache' => ['config'],
-    'enableCache' => false,
+    // 'enableCache' => false,
+    'enableCache' => true,
 
     'annotationRouting' => true,
     'enableBodyParsing' => true,
@@ -61,5 +62,6 @@ return [
     'autoloadCommands' => false,
     'commands' => [
         App\Commands\RouteList::class,
+        App\Commands\ClearCache::class,
     ],
 ];

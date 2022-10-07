@@ -62,8 +62,7 @@ class HttpLoggerMiddleware implements MiddlewareInterface
     {
         $cacheEnabled = enable_cache('config');
         if($cacheEnabled && file_exists($path = Paths::Cache . '/httpLogger/CompiledConfig.php')) {
-            require $path;
-            $this->config = new CompiledConfig;
+            $this->config = require $path;
             return;
         }
 
@@ -80,9 +79,9 @@ class HttpLoggerMiddleware implements MiddlewareInterface
         RequestHandlerInterface $handler
     ): ResponseInterface
     {
-        $this->logRequest($request);
         try
         {
+            $this->logRequest($request);
             $response = $handler->handle($request);
             $this->logResponse($request, $response);
             return $response;
@@ -92,26 +91,6 @@ class HttpLoggerMiddleware implements MiddlewareInterface
             $this->logError($ex);
             throw $ex;
         }
-    }
-
-    private function logError(Exception $ex)
-    {
-        $writer = $this->getWriter();
-        if(!$writer || !$this->config->logErrors) return;
-
-        $logData = new LogData('error', [
-            'requestHash'  => $this->registry->get('requestHash'),
-            'errorClass'   => get_class($ex),
-            'errorCode'    => $ex->getCode(),
-            'errorMessage' => $ex->getMessage(),
-            'errorFile'    => $ex->getFile(),
-            'errorLine'    => $ex->getLine(),
-        ]);
-
-        $logOption = $logData->finish();
-        $this->registry->set('errorHash', $logOption['hash']);
-
-        $writer->writeLog($logOption);
     }
 
     private function logRequest(ServerRequestInterface $request)
@@ -264,6 +243,26 @@ class HttpLoggerMiddleware implements MiddlewareInterface
 
         $logOption = $logData->finish();
         $this->registry->set('responseHash', $logOption['hash']);
+        $writer->writeLog($logOption);
+    }
+
+    private function logError(Exception $ex)
+    {
+        $writer = $this->getWriter();
+        if(!$writer || !$this->config->logErrors) return;
+
+        $logData = new LogData('error', [
+            'requestHash'  => $this->registry->get('requestHash'),
+            'errorClass'   => get_class($ex),
+            'errorCode'    => $ex->getCode(),
+            'errorMessage' => $ex->getMessage(),
+            'errorFile'    => $ex->getFile(),
+            'errorLine'    => $ex->getLine(),
+        ]);
+
+        $logOption = $logData->finish();
+        $this->registry->set('errorHash', $logOption['hash']);
+
         $writer->writeLog($logOption);
     }
 

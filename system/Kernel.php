@@ -75,6 +75,7 @@ class Kernel
         if (is_cli()) {
             static::$console = new Application($config['console'] ?? "Slim Edge");
             static::$console->add(new RouteList);
+            static::$console->add(new \SlimEdge\Commands\ClearCache);
             return static::$console;
         }
 

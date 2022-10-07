@@ -13,7 +13,6 @@ use Doctrine\Common\Annotations\Reader;
 use Psr\Http\Message\ServerRequestInterface;
 use Doctrine\Common\Annotations\PsrCachedReader;
 use Doctrine\Common\Annotations\AnnotationReader;
-use Psr\Http\Message\StreamFactoryInterface;
 
 use function SlimEdge\Helpers\enable_cache;
 
@@ -51,8 +50,4 @@ return [
     'registry' => function() {
         return new Collection();
     },
-
-    StreamFactoryInterface::class => \DI\Factory(function() {
-        return new \Laminas\Diactoros\StreamFactory();
-    }),
 ];

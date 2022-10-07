@@ -65,3 +65,5 @@ class CompiledConfig extends Config
         $this->logResponse->ignoreRoutes = '{response.ignoreRoutes}';
     }
 }
+
+return new CompiledConfig;
