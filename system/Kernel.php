@@ -74,8 +74,7 @@ class Kernel
 
         if (is_cli()) {
             static::$console = new Application($config['console'] ?? "Slim Edge");
-            static::$console->add(new RouteList);
-            static::$console->add(new \SlimEdge\Commands\ClearCache);
+            $bs->registerCommands($config);
             return static::$console;
         }
 
@@ -208,7 +207,8 @@ class Kernel
 
         foreach ($configDefinition as $key => $scripts) {
             $definition['config.' . $key] = DI\factory([ConfigFactory::class, 'create'])
-                ->parameter('configFiles', $scripts);
+                ->parameter('configFiles', $scripts)
+                ->parameter('option', ConfigFactory::OptionAsRecursiveCollection);
         }
     }
 
@@ -216,8 +216,12 @@ class Kernel
     {
         $dependenciesPaths = [
             Paths::Dependencies,
-            BASEPATH . '/system/dependencies',
+            SYS_PATH . '/dependencies',
         ];
+
+        if(defined(ENVIRONMENT)) {
+            $dependenciesPaths[] = Paths::Dependencies . '/' . ENVIRONMENT;
+        }
 
         $dependencies = [];
 
@@ -328,5 +332,29 @@ class Kernel
 
         $routeBasePath = $config['routeBasePath'] ?? get_base_path();
         static::$app->setBasePath($routeBasePath);
+    }
+
+    public function registerCommands(array $config)
+    {
+        $pattern = SYS_PATH . '/Commands/*.php';
+
+        foreach(rglob($pattern) as $item) {
+            $class = "\\SlimEdge\\Commands\\" . substr($item, strlen($pattern) - 5, -4);
+            static::$console->add(new $class);
+        }
+
+        if($config['autoloadCommands'] ?? false) {
+            $pattern = Paths::Command . '/*.php';
+
+            foreach(rglob($pattern) as $item) {
+                $class = "\\App\\Commands\\" . substr($item, strlen($pattern) - 5, -4);
+                static::$console->add(new $class);
+            }
+        }
+        else {
+            foreach($config['commands'] ?? [] as $command) {
+                static::$console->add(new $command);
+            }
+        }
     }
 }

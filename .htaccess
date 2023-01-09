@@ -1,27 +1,30 @@
+# For production, put your rewrite rules directly into your VirtualHost
+
 <IfModule mod_rewrite.c>
     RewriteEngine On
-    RewriteCond %{REQUEST_FILENAME} !-f
-    RewriteCond %{REQUEST_FILENAME} !-d
-    RewriteRule ^ /index.php/$1 [L]
 
-    RewriteCond %{REQUEST_FILENAME} -f
-    RewriteCond %{REQUEST_FILENAME} -s
-    RewriteCond %{REQUEST_URI} !^/index.php
-    RewriteCond %{REQUEST_URI} !^/errors/
-    RewriteRule ^ errors/403.php [L]
+    RewriteCond %{REQUEST_FILENAME} -s [OR]
+    RewriteCond %{REQUEST_FILENAME} -l [OR]
+    RewriteCond %{REQUEST_FILENAME} -d
+    RewriteRule ^.*$ - [L]
+
+    RewriteCond %{REQUEST_URI}::$1 ^(/.+)(.+)::\2$
+    RewriteRule ^(.*) - [E=BASE:%1]
+    RewriteRule ^(.*)$ %{ENV:BASE}index.php [L]
 </IfModule>
 
-<IfModule mod_alias.c>
-    ErrorDocument 400 "/errors/400.php"
-    ErrorDocument 401 "/errors/401.php"
-    ErrorDocument 403 "/errors/403.php"
-    ErrorDocument 404 "/errors/404.php"
-    ErrorDocument 410 "/errors/410.php"
-    ErrorDocument 500 "/errors/500.php"
-    ErrorDocument 501 "/errors/501.php"
-</IfModule>
+# <Files ~ !"^.*\.(?:ht|git)">
+#     order allow,deny
+#     deny from all
+#     satisfy all
+# </Files>
 
-LimitRequestBody 2048000
+# <Files "README.md">
+#     order allow,deny
+#     deny from all
+#     satisfy all
+# </Files>
+
 Options -Indexes
 
 SetEnvIf SERVER_ADDR "^(?:127\.0\.0\.\d+|::1)" ENV=development

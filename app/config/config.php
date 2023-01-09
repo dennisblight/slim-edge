@@ -60,8 +60,5 @@ return [
     ],
 
     'autoloadCommands' => false,
-    'commands' => [
-        App\Commands\RouteList::class,
-        App\Commands\ClearCache::class,
-    ],
+    'commands' => [ ],
 ];

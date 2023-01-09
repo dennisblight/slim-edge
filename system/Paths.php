@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace SlimEdge;
 
+define('SYS_PATH', __DIR__);
 define('APP_PATH', BASEPATH . '/app');
 define('STORAGE_PATH', BASEPATH . '/storage');
 
@@ -12,6 +13,8 @@ abstract class Paths
     public const App = APP_PATH;
 
     public const Config = APP_PATH . '/config';
+
+    public const Command = APP_PATH . '/Commands';
 
     public const Dependencies = APP_PATH . '/dependencies';
 

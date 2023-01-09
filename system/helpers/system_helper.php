@@ -10,6 +10,10 @@ if(! function_exists('SlimEdge\Helpers\enable_cache'))
 {
     function enable_cache(string $scope): bool
     {
+        if(is_cli()) {
+            return false;
+        }
+
         /**
          * @var Collection $config
          */

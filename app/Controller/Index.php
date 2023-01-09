@@ -6,18 +6,15 @@ namespace App\Controller;
 
 use SlimEdge\Annotation\Route;
 use Laminas\Diactoros\Response;
-use Psr\Http\Message\ServerRequestInterface;
 
 class Index
 {
     /**
      * @Route\Get("/", "index")
-     * @Route\Post("/")
      */
-    public function indexGet(ServerRequestInterface $request)
+    public function indexGet()
     {
-        // $body = $request->getBody();
-        return new Response\JsonResponse($_POST);
+        return new Response\JsonResponse(null);
     }
 
     /**

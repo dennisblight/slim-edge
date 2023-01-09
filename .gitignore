@@ -4,3 +4,4 @@
 !/*/.htaccess
 /composer.lock
 rnd*.php
+*.bkp

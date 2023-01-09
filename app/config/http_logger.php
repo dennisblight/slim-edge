@@ -1,24 +1,6 @@
 <?php
 
 return [
-    'max_length'     => 0xFFFF,
-    
-    'writer'         => SlimEdge\Middleware\HttpLogger\Writer\FileWriter::class,
-    'path'           => BASEPATH . '/storage/logs/http',
-    'max_file_size'  => 10e6,
-    'ignore_file'    => false,
-    'ignore_headers' => [
-        'accept_encoding',
-        'dnt',
-        'connection',
-        'upgrade_insecure_requests',
-        'sec_fetch_dest',
-        'sec_fetch_mode',
-        'sec_fetch_site',
-        'sec_fetch_user',
-        'cache_control',
-    ],
-
     /**
      * Maximum log file size
      */
@@ -38,7 +20,7 @@ return [
         /**
          * Maximum size of body should write to log file
          */
-        'maxBody' => 2000000,
+        'maxBody' => 2000,
 
         /**
          * Ignore body when body size reached maximum
@@ -74,7 +56,7 @@ return [
         /**
          * Maximum size of body should write to log file
          */
-        'maxBody' => 2000000,
+        'maxBody' => 2000,
 
         /**
          * Ignore body when body size reached maximum
@@ -111,5 +93,10 @@ return [
          * Ignore logging when the request route name is in specified value
          */
         'ignoreRoutes' => ['readLog', 'index'],
+    ],
+
+    'routes' => [
+        'index' => [
+        ]
     ],
 ];

@@ -6,6 +6,7 @@ namespace SlimEdge\Middleware\HttpLogger;
 
 use RuntimeException;
 use Slim\Interfaces\RouteInterface;
+use SlimEdge\Entity\Collection;
 
 class Config
 {
@@ -94,7 +95,7 @@ class Config
 
     public function compileConfig($path)
     {
-        $template = file_get_contents(__DIR__ . '/Templates/Config.tpl');
+        $template = file_get_contents(__DIR__ . '/Config.tpl');
 
         $compiled = str_replace([
             "'{maxFileSize}'",
@@ -178,6 +179,9 @@ class Config
                 $result .= ",\n";
             }
             return $result . str_repeat('    ', $indentLevel) . ']';
+        }
+        elseif($value instanceof Collection) {
+            return $this->varExport($value->getArrayCopy(), $indentLevel);
         }
         else {
             $type = is_object($value) ? get_class($value) : gettype($value);

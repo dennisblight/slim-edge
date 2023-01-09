@@ -238,6 +238,6 @@ class AnnotationRoute
             $url = str_replace('//', '/', $url);
         }
 
-        return empty($url) ? '[/]' : $url;
+        return empty($url) ? '/' : $url;
     }
 }

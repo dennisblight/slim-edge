@@ -89,3 +89,22 @@ if (!function_exists('array_is_list')) {
         return true;
     }
 }
+
+if (!function_exists('array_merge_deep')) {
+    function array_merge_deep(array $array, array ...$arrays)
+    {
+        foreach($arrays as $array2) {
+            foreach($array2 as $key => $value2) {
+                if(array_key_exists($key, $array) && is_array($value2)) {
+                    $value = $array[$key];
+                    if(is_array($value)) {
+                        $value2 = array_merge_deep($value, $value2);
+                    }
+                }
+
+                $array[$key] = $value2;
+            }
+        }
+        return $array;
+    }
+}
