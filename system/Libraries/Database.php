@@ -97,18 +97,18 @@ class Database extends XQuery
     /**
      * @return XQuery
      */
-    public function connection(string $connection)
+    public function connection(string $connectionName)
     {
-        if(array_key_exists($connection, $this->connections)) {
-            return $this->connections[$connection];
+        if(array_key_exists($connectionName, $this->connections)) {
+            return $this->connections[$connectionName];
         }
 
-        $config = $this->getConfigForConnection($connection);
+        $config = $this->getConfigForConnection($connectionName);
 
         $connection = $this->resolveDriver($config);
         $compiler = $this->resolveCompiler($config);
 
-        return $this->connections[$connection] = new XQuery($connection, $compiler);
+        return $this->connections[$connectionName] = new XQuery($connection, $compiler);
     }
 
     /**

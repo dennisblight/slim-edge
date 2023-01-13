@@ -1,8 +1,8 @@
 <?php
 
 return [
-    'enableCache'      => $_SERVER['ENV'] !== 'development',
-    'compileContainer' => $_SERVER['ENV'] !== 'development',
+    'enableCache'      => ENVIRONMENT !== 'development',
+    'compileContainer' => ENVIRONMENT !== 'development',
 
     'annotationRouting' => true,
     'enableBodyParsing' => true,

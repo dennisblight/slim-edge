@@ -18,6 +18,8 @@ use SlimEdge\Route\AnnotationRoute;
 use Symfony\Component\Console\Application;
 use Symfony\Component\Stopwatch\Stopwatch;
 
+use function SlimEdge\Helpers\load_config;
+
 class Kernel
 {
     /**
@@ -61,9 +63,11 @@ class Kernel
             throw new \ErrorException($errstr, 0, $errno, $errfile, $errline);
         });
 
+        require_once BASEPATH . '/system/helpers/autoload.php';
+
         $bs = new static;
 
-        $config = $bs->loadConfig();
+        $config = load_config();
         $builder = $bs->createBuilder($config);
 
         static::$container = $builder->build();
@@ -79,40 +83,6 @@ class Kernel
         }
 
         return static::$app;
-    }
-
-    /**
-     * Load base config from app/config/config.php file
-     */
-    public function loadConfig(): array
-    {
-        $config = [];
-
-        $configFile = Paths::Config . '/config.php';
-
-        $load = function($path) {
-            $config = require $path;
-            assert(is_array($config), "Config file '$path' must return array");
-            return $config;
-        };
-
-        if (file_exists($configFile)) {
-            $config = $load($configFile);
-        }
-
-        if (defined('ENVIRONMENT')) {
-            $configFile = Paths::Config . '/config.' . ENVIRONMENT . '.php';
-            if (file_exists($configFile)) {
-                $config = array_merge($config, $load($configFile));
-            }
-
-            $configFile = Paths::Config . '/config/' . ENVIRONMENT . '/config.php';
-            if (file_exists($configFile)) {
-                $config = array_merge($config, $load($configFile));
-            }
-        }
-
-        return $config;
     }
 
     public function createBuilder(array $config)
