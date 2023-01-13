@@ -30,22 +30,16 @@ class Database extends XQuery
     public function __construct(ContainerInterface $container)
     {
         $this->config = $container->get('config.database');
-        parent::__construct(...$this->getDefaultConnection());
-    }
-
-    private function getDefaultConnection()
-    {
+        
         $default = $this->config->get('default', 'main');
+        $dbConfig = $this->getConfigForConnection($default);
+
+        parent::__construct(
+            $this->resolveDriver($dbConfig),
+            $this->resolveCompiler($dbConfig),
+        );
+
         $this->connections[$default] = $this;
-
-        $config = $this->getConfigForConenction($default);
-
-
-        $config = $this->config->connections->get($default);
-        return [
-            $this->resolveDriver($config),
-            $this->resolveCompiler($config),
-        ];
     }
 
     private function resolveDriver($config)
@@ -87,7 +81,7 @@ class Database extends XQuery
         throw new RuntimeException("Could not resolve query compiler for '{$driver}' driver.");
     }
 
-    private function getConfigForConenction(string $configName)
+    private function getConfigForConnection(string $configName)
     {
         if(!$this->config->has('connections')) {
             throw new RuntimeException("Invalid database configuration. Connections not found.");
@@ -109,11 +103,20 @@ class Database extends XQuery
             return $this->connections[$connection];
         }
 
-        $config = $this->getConfigForConenction($connection);
+        $config = $this->getConfigForConnection($connection);
 
         $connection = $this->resolveDriver($config);
         $compiler = $this->resolveCompiler($config);
 
         return $this->connections[$connection] = new XQuery($connection, $compiler);
+    }
+
+    /**
+     * @return XQuery
+     */
+    public function getDefaultConnection()
+    {
+        $default = $this->config->get('default', 'main');
+        return $this->connections[$default];
     }
 }

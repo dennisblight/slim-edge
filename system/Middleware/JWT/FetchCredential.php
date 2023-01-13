@@ -20,8 +20,7 @@ class FetchCredential extends RequireCredential
             return parent::process($request, $handler);
         }
         catch(Exception $ex) {
-            $request->withAttribute('token', $this->token);
-            return $handler->handle($request);
+            return $handler->handle($request->withAttribute('token', $this->token));
         }
     }
 }

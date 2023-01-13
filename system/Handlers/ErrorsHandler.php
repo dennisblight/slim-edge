@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
-namespace App\Controller;
+namespace SlimEdge\Handlers;
 
 use Laminas\Diactoros\Response;
 
-class Errors
+class ErrorsHandler
 {
     public function error400()
     {

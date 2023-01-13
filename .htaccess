@@ -1,29 +1,34 @@
-# For production, put your rewrite rules directly into your VirtualHost
-
 <IfModule mod_rewrite.c>
     RewriteEngine On
+    
+    # Setup path variable(s)
+    RewriteCond %{REQUEST_URI}::$1 "^/(.+)(.+)::\2$"
+    RewriteRule ^(.*) - [E=BASE:%1,E=RELPATH:%2]
 
+    # Setup publicly visible path
+    RewriteCond %{REQUEST_FILENAME} -s
+    RewriteCond %{ENV:RELPATH} !^(index.php|errors/|public/)
+    RewriteRule ^.*$ - [F,L]
+
+    # Exit rewrite loop if file exists
     RewriteCond %{REQUEST_FILENAME} -s [OR]
     RewriteCond %{REQUEST_FILENAME} -l [OR]
     RewriteCond %{REQUEST_FILENAME} -d
     RewriteRule ^.*$ - [L]
 
-    RewriteCond %{REQUEST_URI}::$1 ^(/.+)(.+)::\2$
-    RewriteRule ^(.*) - [E=BASE:%1]
-    RewriteRule ^(.*)$ %{ENV:BASE}index.php [L]
+    # Rewrite any nonexist file to
+    RewriteRule ^(.*)$ /%{ENV:BASE}index.php [L]
 </IfModule>
 
-# <Files ~ !"^.*\.(?:ht|git)">
-#     order allow,deny
-#     deny from all
-#     satisfy all
-# </Files>
-
-# <Files "README.md">
-#     order allow,deny
-#     deny from all
-#     satisfy all
-# </Files>
+<IfModule mod_alias.c>
+    ErrorDocument 400 "/%{ENV:BASE}errors/400.php"
+    ErrorDocument 401 "/%{ENV:BASE}errors/401.php"
+    ErrorDocument 403 "/%{ENV:BASE}errors/403.php"
+    ErrorDocument 404 "/%{ENV:BASE}errors/404.php"
+    ErrorDocument 410 "/%{ENV:BASE}errors/410.php"
+    ErrorDocument 500 "/%{ENV:BASE}errors/500.php"
+    ErrorDocument 501 "/%{ENV:BASE}errors/501.php"
+</IfModule>
 
 Options -Indexes
 

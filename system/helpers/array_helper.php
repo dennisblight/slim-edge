@@ -44,9 +44,8 @@ if (!function_exists('coalesce')) {
      * @param mixed $args,... 
      * @return mixed|null
      */
-    function coalesce()
+    function coalesce(...$args)
     {
-        $args = func_get_args();
         foreach ($args as $item) {
             if (!is_null($item)) {
                 return $item;

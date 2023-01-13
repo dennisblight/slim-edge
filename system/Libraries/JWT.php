@@ -12,6 +12,7 @@ use Firebase\JWT\SignatureInvalidException;
 use InvalidArgumentException;
 use Psr\Container\ContainerInterface;
 use RuntimeException;
+use SlimEdge\Entity\AbstractCollection;
 use SlimEdge\Entity\Collection;
 use UnexpectedValueException;
 
@@ -27,7 +28,7 @@ class JWT
         $this->config = $container->get('config.jwt');
     }
 
-    public function encode($payload)
+    public function encode($payload = null)
     {
         $key = $this->getKey('private_key');
 
@@ -40,9 +41,11 @@ class JWT
             $append['exp'] = strtotime($this->config->duration);
         }
 
+        $resolvedPayload = $this->resolvePayload($payload);
+
         $data =  array_merge(
             ['jti' => FirebaseJWT::urlsafeB64Encode(random_bytes(4))],
-            (array) $payload,
+            $resolvedPayload,
             $append
         );
 
@@ -52,15 +55,23 @@ class JWT
 
     private function resolvePayload($payload)
     {
-        if(is_array($payload)) return $payload;
-
-        if(is_object($payload)) {
+        if(is_array($payload)) {
+            return $payload;
+        }
+        elseif($payload instanceof AbstractCollection) {
+            return $payload->getArrayCopy();
+        }
+        elseif(is_object($payload)) {
             $resolved = [];
             foreach($payload as $prop => $val) $resolved[$prop] = $val;
             return $resolved;
         }
-
-        return (array) $payload;
+        elseif(is_null($payload)) {
+            return [];
+        }
+        
+        $type = is_object($payload) ? get_class($payload) : gettype($payload);
+        throw new InvalidArgumentException("Could not resolve 'payload' from argument type '{$type}'");
     }
 
     public function decode($token)

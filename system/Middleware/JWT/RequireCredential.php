@@ -10,6 +10,7 @@ use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Server\MiddlewareInterface;
 use Psr\Http\Server\RequestHandlerInterface;
 use Slim\Exception\HttpUnauthorizedException;
+use SlimEdge\Exceptions\JWTException;
 use SlimEdge\Libraries\JWT;
 
 class RequireCredential implements MiddlewareInterface
@@ -45,13 +46,18 @@ class RequireCredential implements MiddlewareInterface
         if(empty($token)) {
             throw new HttpUnauthorizedException($request);
         }
+        
+        try {
+            $credential = $this->jwtEncoder->decode($token);
+            $request = $request
+                ->withAttribute('credential', $credential)
+                ->withAttribute('token', $token);
 
-        $credential = $this->jwtEncoder->decode($token);
-        $request = $request
-            ->withAttribute('credential', $credential)
-            ->withAttribute('token', $token);
-
-        return $handler->handle($request);
+            return $handler->handle($request);
+        }
+        catch(\UnexpectedValueException $ex) {
+            throw new JWTException($ex->getMessage(), $ex->getCode(), $ex);
+        }
     }
 
     private function fetchToken(ServerRequestInterface $request): ?string

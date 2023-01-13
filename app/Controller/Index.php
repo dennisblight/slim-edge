@@ -14,14 +14,22 @@ class Index
      */
     public function indexGet()
     {
-        return new Response\JsonResponse(null);
+        return new Response\JsonResponse("Hello World!");
     }
 
     /**
-     * @Route\Get("/example", "example")
+     * @Route\Get("/example")
      */
     public function exampleGet()
     {
-        return new Response\JsonResponse("Hello World!");
+        return new Response\JsonResponse("Example endpoint");
+    }
+
+    /**
+     * @Route\Get("/system/example")
+     */
+    public function sysXGet()
+    {
+        return new Response\JsonResponse("sys Example endpoint");
     }
 }
