@@ -16,7 +16,7 @@ use Doctrine\Common\Annotations\Annotation\Target;
 class Property
 {
     /**
-     * @var ?string $type
+     * @var string $type
      */
     private $type;
     
@@ -35,7 +35,7 @@ class Property
         return $this->nullable;
     }
 
-    public function __construct(?string $type = null, bool $nullable = false)
+    public function __construct(string $type = 'string', bool $nullable = false)
     {
         $this->type = $type;
         $this->nullable = $nullable;

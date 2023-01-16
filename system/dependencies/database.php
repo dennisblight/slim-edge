@@ -12,12 +12,10 @@ $dependencies = [
 ];
 
 $dbConfig = load_config('database');
-
 foreach($dbConfig['connections'] as $key => $connection) {
     $dependencies['db.' . $key] = DI\factory(function(RequestedEntry $entry, Database $db) {
-        $dbKey = explode('.', $entry->getName())[1];
+        $dbKey = explode('.', $entry->getName())[ 1 ];
         return $db->connection($dbKey);
-        
     });
 }
 

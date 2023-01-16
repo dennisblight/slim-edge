@@ -19,8 +19,7 @@ class Collection extends AbstractCollection
     
     public function offsetSet($key, $value): void
     {
-        if($this->recursiveCollection && (is_iterable($value) || is_object($value))) {
-
+        if($this->recursiveCollection && !($value instanceof \Closure) && (is_iterable($value) || is_object($value))) {
             if(!($value instanceof AbstractCollection)) {
                 $value = new Collection($value, true);
             }

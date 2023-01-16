@@ -11,9 +11,10 @@ use ReflectionProperty;
 use SlimEdge\Annotation\Entity\Accessor;
 use SlimEdge\Annotation\Entity\Mutator;
 use SlimEdge\Annotation\Entity\Property;
+use SlimEdge\Entity\EntityMetadata;
 use SlimEdge\Kernel;
 
-class EntityReader
+class EntityReader2
 {
     /**
      * @var ReflectionClass $reflection
@@ -30,9 +31,60 @@ class EntityReader
      */
     private $properties;
 
+    /**
+     * @var PhpDocReader $docReader
+     */
+    private $docReader;
+
     public function __construct(string $className)
     {
         $this->reflection = new ReflectionClass($className);
+        $this->docReader = new PhpDocReader;
+    }
+
+    public function readMetadata()
+    {
+        $properties = $this->docReader->readClassProperties($this->reflection);
+
+        $reader = $this->getAnnotationReader();
+        foreach($this->getMethods() as $name => $method) {
+            if($method->getNumberOfParameters() === 1) {
+                /** @var ?Accessor $accessor */
+                $accessor = $reader->getMethodAnnotation($method, Accessor::class);
+
+                /** @var ?Mutator $mutator */
+                $mutator = $reader->getMethodAnnotation($method, Mutator::class);
+
+                if(!is_null($accessor)) {
+                    $property = $accessor->getProperty();
+                    $properties[$property] = array_merge([
+                        'property' => $property,
+                        'accessor' => $name,
+                    ], $properties[$property] ?? []);
+                }
+
+                if(!is_null($mutator)) {
+                    $property = $mutator->getProperty();
+                    $properties[$property] = array_merge([
+                        'property' => $property,
+                        'mutator' => $name,
+                    ], $properties[$property] ?? []);
+                }
+            }
+        }
+
+        $metadata = [];
+        foreach($properties as $key => $prop) {
+            $m = new EntityMetadata;
+            $m->property = $prop['property'];
+            $m->type     = $prop['type'];
+            $m->nullable = $prop['nullable'];
+            $m->accessor = $prop['accessor'] ?? null;
+            $m->mutator  = $prop['mutator'] ?? null;
+            $metadata[$key] = $m;
+        }
+
+        return $metadata;
     }
 
     /**

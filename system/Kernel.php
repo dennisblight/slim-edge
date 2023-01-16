@@ -8,7 +8,6 @@ use DI;
 use Psr\Container\ContainerInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Slim\App;
-use SlimEdge\Commands\RouteList;
 use SlimEdge\Entity\Collection;
 use SlimEdge\Factory\ConfigFactory;
 use SlimEdge\Handlers\Preflight;
@@ -16,7 +15,6 @@ use SlimEdge\Middleware\CorsMiddleware;
 use SlimEdge\Middleware\RequestPassingMiddleware;
 use SlimEdge\Route\AnnotationRoute;
 use Symfony\Component\Console\Application;
-use Symfony\Component\Stopwatch\Stopwatch;
 
 use function SlimEdge\Helpers\load_config;
 

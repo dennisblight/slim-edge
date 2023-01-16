@@ -84,7 +84,7 @@ trait ConfigTrait
                 $configItem = [$configItem];
             }
             else {
-                throw new \RuntimeException("Could not resolve '$key' value from config");
+                throw new \RuntimeException("Could not resolve '{$key}' value from config");
             }
 
             return $configItem;

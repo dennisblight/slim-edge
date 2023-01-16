@@ -4,8 +4,6 @@ declare(strict_types=1);
 
 namespace SlimEdge\Middleware\HttpLogger\Writer;
 
-use Psr\Http\Message\ResponseInterface;
-use Psr\Http\Message\ServerRequestInterface;
 use SlimEdge\Middleware\HttpLogger\Config;
 
 abstract class BaseWriter

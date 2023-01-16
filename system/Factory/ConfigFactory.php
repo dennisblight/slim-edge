@@ -17,7 +17,7 @@ abstract class ConfigFactory
         $config = [];
         foreach ($configFiles as $script) {
             $_config = require $script;
-            assert(is_array($_config), "Config file '$script' must return array");
+            assert(is_array($_config), "Config file '{$script}' must return array");
             $config = array_merge_deep($config, $_config);
         }
 

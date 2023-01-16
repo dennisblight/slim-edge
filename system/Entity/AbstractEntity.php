@@ -10,41 +10,55 @@ use SlimEdge\Exceptions\EntityException;
 use SlimEdge\Helpers;
 use SlimEdge\Kernel;
 
+use function SlimEdge\Helpers\enable_cache;
+
 class AbstractEntity extends AbstractCollection
 {
     /**
-     * @var ?array $properties
+     * @var array $properties
      */
-    protected static $properties;
+    protected static $properties = [];
 
     /**
-     * @var ?array $accessors
+     * @var array $accessors
      */
-    protected static $accessors;
+    protected static $accessors = [];
 
     /**
-     * @var ?array $mutators
+     * @var array $mutators
      */
-    protected static $mutators;
+    protected static $mutators = [];
 
     /**
      * @var array $resolves
      */
     private static $resolves = [];
 
+    /**
+     * @param iterable|object $data
+     */
     public function __construct($data = [])
     {
         static::resolveBehavior();
+
+        foreach(static::$properties as $key => $property) {
+            if(!isset($data[$key])) {
+                $data[$key] = $this->getDefault($key);
+            }
+        }
+
         parent::__construct($data);
     }
 
-    public function offsetGet($key): mixed
+    public function offsetGet($key)
     {
         if(array_key_exists($key, static::$accessors)) {
             return $this->access(static::$accessors[$key]);
         }
-
-        return parent::offsetGet($key);
+        
+        return parent::offsetExists($key)
+            ? parent::offsetGet($key)
+            : $this->getDefault($key);
     }
 
     public function offsetSet($key, $value): void
@@ -77,7 +91,7 @@ class AbstractEntity extends AbstractCollection
         }
 
         throw new EntityException(
-            "Could not resolve accessor '$accessor'"
+            "Could not resolve accessor '{$accessor}'"
         );
     }
 
@@ -92,7 +106,7 @@ class AbstractEntity extends AbstractCollection
         }
 
         throw new EntityException(
-            "Could not resolve mutator type '$type'"
+            "Could not resolve mutator type '{$type}'"
         );
     }
 
@@ -134,7 +148,51 @@ class AbstractEntity extends AbstractCollection
         }
 
         throw new EntityException(
-            "Could not resolve cast type '$type'"
+            "Could not resolve cast type '{$type}'"
+        );
+    }
+
+    protected function getDefault($key)
+    {
+        if(!array_key_exists($key, static::$properties)) {
+            return null;
+        }
+
+        [$type, $nullable] = static::$properties[$key];
+        if($nullable) return null;
+
+        switch($type) {
+            case 'bool':
+            case 'boolean':
+                return false;
+            case 'string':
+                return '';
+            case 'int':
+            case 'integer':
+            case 'float':
+            case 'real':
+            case 'double':
+                return 0;
+            case 'date':
+                return Helpers\cast_date(date('Y-m-d H:i:s'));
+            case 'time':
+                return Helpers\cast_time(date('Y-m-d H:i:s'));
+            case 'datetime':
+                return Helpers\cast_datetime(date('Y-m-d H:i:s'));
+            case 'array':
+                return [];
+            case 'object':
+                return new \stdClass;
+            case 'collection':
+                return new Collection();
+        }
+
+        if(class_exists($type) && is_subclass_of($type, AbstractEntity::class)) {
+            return new $type();
+        }
+
+        throw new EntityException(
+            "Could not resolve default type '{$type}'"
         );
     }
 
@@ -185,6 +243,10 @@ class AbstractEntity extends AbstractCollection
 
     protected static function tryResolveFromCache(): bool
     {
+        if(!enable_cache('entity')) {
+            return false;
+        }
+
         /**
          * @var CacheInterface $cache
          */
@@ -263,7 +325,7 @@ class AbstractEntity extends AbstractCollection
             if(!$isResolved) {
                 $class = static::class;
                 throw new EntityException(
-                    "Could not resolve property definition for class '$class'"
+                    "Could not resolve property definition for class '{$class}'"
                 );
             }
 

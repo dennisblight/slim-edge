@@ -113,7 +113,7 @@ class JWT
         }
 
         if(empty($key)) {
-            throw new RuntimeException("Unable to fetch '$type' or 'key' from configuration file.");
+            throw new RuntimeException("Unable to fetch '{$type}' or 'key' from configuration file.");
         }
 
         return $key;

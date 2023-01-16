@@ -88,7 +88,7 @@ class Database extends XQuery
         }
 
         if(!$this->config->connections->has($configName)) {
-            throw new RuntimeException("Invalid database configuration. Config '$configName' not found.");
+            throw new RuntimeException("Invalid database configuration. Config '{$configName}' not found.");
         }
 
         return $this->config->connections->get($configName);

@@ -312,7 +312,7 @@ class HttpLoggerMiddleware implements MiddlewareInterface
             fclose($stream);
         }
 
-        return "$path/$fileName";
+        return "{$path}/{$fileName}";
     }
 
     /**

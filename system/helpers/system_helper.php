@@ -38,7 +38,7 @@ if(! function_exists('SlimEdge\Helpers\enable_cache'))
         }
         
         $class = is_object($cacheEnabled) ? get_class($cacheEnabled) : gettype($cacheEnabled);
-        throw new ConfigException("Could not resolve '$class' for config enableCache");
+        throw new ConfigException("Could not resolve '{$class}' for config enableCache");
     }
 }
 

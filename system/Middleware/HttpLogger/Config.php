@@ -185,7 +185,7 @@ class Config
         }
         else {
             $type = is_object($value) ? get_class($value) : gettype($value);
-            throw new RuntimeException("Could not resolve '$type' parameter value from varExport");
+            throw new RuntimeException("Could not resolve '{$type}' parameter value from varExport");
         }
     }
 }
