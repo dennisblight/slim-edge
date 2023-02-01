@@ -5,7 +5,10 @@ declare(strict_types=1);
 namespace SlimEdge\Entity;
 
 use Psr\SimpleCache\CacheInterface;
+use Respect\Validation\Validator;
+use Respect\Validation\Rules;
 use SlimEdge\Annotation\Reader\EntityReader;
+use SlimEdge\Annotation\Reader\EntityReader2;
 use SlimEdge\Exceptions\EntityException;
 use SlimEdge\Helpers;
 use SlimEdge\Kernel;
@@ -15,24 +18,25 @@ use function SlimEdge\Helpers\enable_cache;
 class AbstractEntity extends AbstractCollection
 {
     /**
-     * @var array $properties
+     * @var bool $resolved
      */
-    protected static $properties = [];
+    protected static $resolved = false;
 
     /**
-     * @var array $accessors
+     * @var bool $expandable
+     * Allow entity to add property
      */
-    protected static $accessors = [];
+    protected static $expandable = false;
 
     /**
-     * @var array $mutators
+     * @var array<string, EntityMetadata> $metadata
      */
-    protected static $mutators = [];
+    protected static $metadata = [];
 
     /**
-     * @var array $resolves
+     * @var Validator? $validator
      */
-    private static $resolves = [];
+    protected static $validator = null;
 
     /**
      * @param iterable|object $data
@@ -41,7 +45,7 @@ class AbstractEntity extends AbstractCollection
     {
         static::resolveBehavior();
 
-        foreach(static::$properties as $key => $property) {
+        foreach(array_keys(static::$metadata) as $key) {
             if(!isset($data[$key])) {
                 $data[$key] = $this->getDefault($key);
             }
@@ -52,68 +56,109 @@ class AbstractEntity extends AbstractCollection
 
     public function offsetGet($key)
     {
-        if(array_key_exists($key, static::$accessors)) {
-            return $this->access(static::$accessors[$key]);
+        // Try get from accessor
+        if($this->access($key, $result)) {
+            return $result;
         }
-        
-        return parent::offsetExists($key)
-            ? parent::offsetGet($key)
-            : $this->getDefault($key);
+
+        // Try get from current collection if exists
+        if(parent::offsetExists($key)) {
+            return parent::offsetGet($key);
+        }
+
+        // Try get default from metadata
+        if(array_key_exists($key, static::$metadata)) {
+            return $this->getDefault($key);
+        }
+
+        // Forbid to access non-exists member for non-expandable class
+        if(!static::$expandable) {
+            throw new \OutOfBoundsException("Undefined offset: '{$key}'");
+        }
+
+        return null;
     }
 
     public function offsetSet($key, $value): void
     {
-        if(!array_key_exists($key, static::$properties)) {
+        if(!array_key_exists($key, static::$metadata) && !static::$expandable) {
             return;
         }
 
-        $property = static::$properties[$key];
-        if(!is_null($property)) {
-            [$type, $nullable] = $property;
-            $value = $this->cast($type, $value, $nullable);
+        // Try to cast
+        if(array_key_exists($key, static::$metadata)) {
+            $metadata = static::$metadata[$key];
+            $value = $this->cast($metadata->type, $value, $metadata->nullable);
         }
 
-        if(array_key_exists($key, static::$mutators)) {
-            $value = $this->mutate(static::$mutators[$key], $value);
+        // Try set using mutator
+        if($this->mutate($key, $value, $mutated)) {
+            $value = $mutated;
         }
-
+        
         parent::offsetSet($key, $value);
     }
 
-    protected function access($accessor)
+    protected function access($key, &$result): bool
     {
-        if(method_exists($this, $accessor)) {
-            return call_user_func([$this, $accessor]);
+        if(!array_key_exists($key, static::$metadata) || is_null($accessor = static::$metadata[$key]->accessor)) {
+            // Accessor not set
+            return false;
         }
 
-        if(is_callable($accessor)) {
-            return call_user_func($accessor);
+        elseif(method_exists($this, $accessor)) {
+            // Accessor available as method
+            $result = call_user_func([$this, $accessor], $key);
+            return true;
         }
 
+        elseif(is_callable($accessor)) {
+            // Accessor available as function
+            $result = call_user_func($accessor, $key);
+            return true;
+        }
+
+        // Accessor available, but not callable
         throw new EntityException(
             "Could not resolve accessor '{$accessor}'"
         );
     }
 
-    protected function mutate($type, $value)
+    protected function mutate($key, $value, &$result): bool
     {
-        if(method_exists($this, $type)) {
-            return call_user_func([$this, $type], $value);
+        if(!array_key_exists($key, static::$metadata)) {
+            // Mutator not available, metadata not found
+            return false;
         }
 
-        if(is_callable($type)) {
-            return call_user_func($type, $value);
+        $mutator = static::$metadata[$key]->mutator;
+
+        if(is_null($mutator)) {
+            // Mutator not set
+            return false;
+        }
+
+        elseif(method_exists($this, $mutator)) {
+            // Mutator available as method
+            $result = call_user_func([$this, $mutator], $key, $value);
+            return true;
+        }
+
+        elseif(is_callable($mutator)) {
+            // Mutator available as method
+            $result = call_user_func($mutator, $key, $value);
+            return true;
         }
 
         throw new EntityException(
-            "Could not resolve mutator type '{$type}'"
+            "Could not resolve mutator type '{$mutator}'"
         );
     }
 
     protected function cast($type, $value, $nullable = false)
     {
-        if($nullable && is_null($value)) {
-            return null;
+        if($type == 'mixed' || ($nullable && is_null($value))) {
+            return $value;
         }
 
         switch($type) {
@@ -133,6 +178,7 @@ class AbstractEntity extends AbstractCollection
                 return Helpers\cast_date($value);
             case 'time':
                 return Helpers\cast_time($value);
+            case \DateTime::class:
             case 'datetime':
                 return Helpers\cast_datetime($value);
             case 'array':
@@ -152,16 +198,42 @@ class AbstractEntity extends AbstractCollection
         );
     }
 
-    protected function getDefault($key)
+    protected function getValidator($key)
     {
-        if(!array_key_exists($key, static::$properties)) {
+        if(!array_key_exists($key, static::$metadata))
             return null;
+
+        $validator = static::$metadata[$key]->validator;
+        if(empty($validator))
+            return null;
+
+        return call_user_func([$this, $validator], $key);
+    }
+
+    public function getValidators()
+    {
+        if(!empty(static::$validator))
+            return static::$validator;
+
+        $rules = [];
+        foreach(static::$metadata as $metadata) {
+            if(!empty($metadata->validator)) {
+                [$validatorMethodName, $isMandatory] = $metadata->validator;
+                $validator = call_user_func([$this, $validatorMethodName], $metadata->property);
+                $rule = new Rules\Key($metadata->property, $validator, $isMandatory);
+                array_push($rules, $rule);
+            }
         }
 
-        [$type, $nullable] = static::$properties[$key];
-        if($nullable) return null;
+        return static::$validator = new Rules\KeySet(...$rules);
+    }
 
-        switch($type) {
+    protected function getDefault($key)
+    {
+        $metadata = static::$metadata[$key];
+        if($metadata->type == 'mixed' || $metadata->nullable) return null;
+
+        switch($metadata->type) {
             case 'bool':
             case 'boolean':
                 return false;
@@ -187,58 +259,47 @@ class AbstractEntity extends AbstractCollection
                 return new Collection();
         }
 
-        if(class_exists($type) && is_subclass_of($type, AbstractEntity::class)) {
+        if(class_exists($metadata->type) && is_subclass_of($metadata->type, AbstractEntity::class)) {
+            $type = $metadata->type;
             return new $type();
         }
 
         throw new EntityException(
-            "Could not resolve default type '{$type}'"
+            "Could not resolve default type '{$metadata->type}'"
         );
     }
 
     public static function resolveBehavior()
     {
-        if(!static::tryResolveFromRegistry() && !static::tryResolveFromCache()) {
-            static::resolveAnnotations();
+        if(!static::$resolved && !static::tryResolveFromCache()) {
+            static::resolve();
             static::saveToCache();
         }
     }
 
-    protected static function saveToCache()
+    protected static function resolve()
     {
-        if(array_key_exists(static::class, self::$resolves)) {
-            if(!isset(self::$resolves[static::class]['resolved'])) {
-                return;
-            }
-
-            /**
-             * @var CacheInterface $cache
-             */
-            $cache = Kernel::$container->get(CacheInterface::class);
-            $cacheKey = 'entity-' . str_replace('\\', '_', static::class);
-
-            $definition = self::$resolves[static::class];
-            $definition['resolved'] = false;
-
-            $cache->set($cacheKey, $definition);
-        }
-    }
-
-    protected static function tryResolveFromRegistry(): bool
-    {
-        if(array_key_exists(static::class, self::$resolves)) {
-            if(!isset(self::$resolves[static::class]['resolved'])) {
-                static::$properties = self::$resolves[static::class]['properties'];
-                static::$accessors = self::$resolves[static::class]['accessors'];
-                static::$mutators = self::$resolves[static::class]['mutators'];
-
-                self::$resolves[static::class]['resolved'] = true;
-            }
-
+        if(!static::$resolved) {
+            $reader = new EntityReader2(static::class);
+            static::$metadata = $reader->readMetadata();
+            static::$resolved = true;
             return true;
         }
 
         return false;
+    }
+
+    protected static function saveToCache()
+    {
+        if(!enable_cache('entity')) {
+            return false;
+        }
+
+        /** @var CacheInterface $cache */
+        $cache = Kernel::$container->get(CacheInterface::class);
+        $cacheKey = 'entity-' . str_replace('\\', '_', static::class);
+        $cache->set($cacheKey, static::$metadata);
+        return true;
     }
 
     protected static function tryResolveFromCache(): bool
@@ -247,89 +308,15 @@ class AbstractEntity extends AbstractCollection
             return false;
         }
 
-        /**
-         * @var CacheInterface $cache
-         */
+        /** @var CacheInterface $cache */
         $cache = Kernel::$container->get(CacheInterface::class);
         $cacheKey = 'entity-' . str_replace('\\', '_', static::class);
         if(is_null($cache) || !$cache->has($cacheKey)) {
             return false;
         }
 
-        $definition = $cache->get($cacheKey);
-        $definition['resolved'] = true;
+        static::$metadata = $cache->get($cacheKey);
 
-        self::$resolves[static::class] = $definition;
-
-        return true;
-    }
-
-    protected static function resolveAnnotations()
-    {
-        static::resolveProperty();
-        $reader = new EntityReader(static::class);
-        $reader->loadProperties(static::$properties);
-        $reader->loadAccessors(static::$accessors);
-        $reader->loadMutators(static::$mutators);
-
-        self::$resolves[static::class] = [
-            'properties' => static::$properties,
-            'accessors' => static::$accessors,
-            'mutators' => static::$mutators,
-            'resolved' => true,
-        ];
-    }
-
-    private static function resolveProperty()
-    {
-        if(is_array(static::$properties)) {
-            $resolvedProperties = [];
-            $isResolved = true;
-            foreach(static::$properties as $name => $behavior) {
-                if(is_numeric($name)) {
-                    if(is_string($behavior)) {
-                        $resolvedProperties[$behavior] = null;
-                    }
-                    else {
-                        $isResolved = false;
-                        break;
-                    }
-                }
-                elseif(is_string($name)) {
-                    if(is_array($behavior)) {
-                        $resolved = [
-                            $behavior[0] ?? $behavior['type'],
-                            $behavior[1] ?? $behavior['nullable'] ?? false,
-                        ];
-                    }
-                    elseif(is_string($behavior)) {
-                        $resolved = [$behavior, false];
-                    }
-                    else {
-                        $resolved = null;
-                    }
-                    
-                    if(is_array($resolved) && (!is_string($resolved[0]) || !is_bool($resolved[1]))) {
-                        $isResolved = false;
-                        break;
-                    }
-
-                    $resolvedProperties[$name] = $resolved;
-                }
-                else {
-                    $isResolved = false;
-                    break;
-                }
-            }
-
-            if(!$isResolved) {
-                $class = static::class;
-                throw new EntityException(
-                    "Could not resolve property definition for class '{$class}'"
-                );
-            }
-
-            static::$properties = $resolvedProperties;
-        }
+        return static::$resolved = true;
     }
 }

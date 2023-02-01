@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace SlimEdge\Middleware\HttpLogger;
+namespace SlimEdge\HttpLog;
 
 use Exception;
 use Slim\Routing\RouteContext;
@@ -19,7 +19,7 @@ use SlimEdge\Paths;
 use function SlimEdge\Helpers\enable_cache;
 use function SlimEdge\Helpers\uuid_format;
 
-class HttpLoggerMiddleware implements MiddlewareInterface
+class HttpLogMiddleware implements MiddlewareInterface
 {
     public const ContextNone = 0;
 
@@ -198,7 +198,6 @@ class HttpLoggerMiddleware implements MiddlewareInterface
         if($routeConfig) {
             $config->override($routeConfig);
         }
-
         if(!$config->checkStatusCode($response->getStatusCode())) {
             return;
         }

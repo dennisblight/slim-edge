@@ -113,14 +113,14 @@ class EntityReader
 
     public function loadProperties(?array &$array)
     {
-        $reader = $this->getAnnotationReader();
-        foreach($this->getProperties() as $name => $prop) {
-            /** @var ?Property $property */
-            $property = $reader->getPropertyAnnotation($prop, Property::class);
-            if(!is_null($property)) {
-                $type = $property->getType();
-                $array[$name] = [$type, $property->isNullable()];
-            }
-        }
+        // $reader = $this->getAnnotationReader();
+        // foreach($this->getProperties() as $name => $prop) {
+        //     /** @var ?Property $property */
+        //     $property = $reader->getPropertyAnnotation($prop, Property::class);
+        //     if(!is_null($property)) {
+        //         $type = $property->getType();
+        //         $array[$name] = [$type, $property->isNullable()];
+        //     }
+        // }
     }
 }

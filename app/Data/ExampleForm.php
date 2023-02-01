@@ -1,8 +1,8 @@
 <?php
 namespace App\Data;
 
-use SlimEdge\Annotation\Entity\Accessor;
-use SlimEdge\Annotation\Entity\Property;
+use Respect\Validation\Validator as v;
+use SlimEdge\Annotation\Entity\Validator;
 use SlimEdge\Entity\AbstractForm;
 
 /**
@@ -11,10 +11,10 @@ use SlimEdge\Entity\AbstractForm;
 class ExampleForm extends AbstractForm
 {
     /**
-     * @Accessor("id")
+     * @Validator("id") @param string $key
      */
-    public function accessor($id)
+    public function stringValidator($key)
     {
-        return 'ID: ' . $id;
+        return v::stringVal()->notBlank();
     }
 }

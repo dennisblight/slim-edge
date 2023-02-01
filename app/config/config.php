@@ -17,15 +17,14 @@ return [
 
     'middleware' => [
         SlimEdge\Middleware\TrimSlashes::class,
-        SlimEdge\Middleware\CorsMiddleware::class,
-        SlimEdge\Middleware\ProfilingMiddeware::class,
-        SlimEdge\Middleware\HttpLogger\HttpLoggerMiddleware::class,
+        // SlimEdge\Middleware\ProfilingMiddeware::class,
+        // SlimEdge\HttpLog\HttpLogMiddleware::class,
     ],
 
     'errors' => require 'errors.php',
 
     'cors' => [
-        'enableCors' => true,
+        'enableCors' => false,
         'allowOrigins' => 'https://www.example.com',
         'allowHeaders' => [
             'X-Requested-With', 'Content-Type', 'Accept', 'Origin', 'Authorization'

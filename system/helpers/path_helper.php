@@ -43,10 +43,19 @@ if(!function_exists('join_path'))
 
 if(!function_exists('rglob'))
 {
-    function rglob(string $pattern, int $flags = 0): array {
-        $files = glob($pattern, $flags); 
+    function rglob(string $pattern, int $flags = 0, $filter = null): array {
+        $files = glob($pattern, $flags);
+
+        if(!is_null($filter))
+            $files = array_filter($files, $filter);
+
         foreach (glob(dirname($pattern).'/*', GLOB_ONLYDIR|GLOB_NOSORT) as $dir) {
-            $files = array_merge($files, rglob($dir.'/'.basename($pattern), $flags));
+            $_files = rglob($dir.'/'.basename($pattern), $flags, $filter);
+
+            if(!is_null($filter))
+                $_files = array_filter($_files, $filter);
+
+            $files = array_merge($files, $_files);
         }
         return $files;
     }

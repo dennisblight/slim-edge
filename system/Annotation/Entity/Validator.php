@@ -11,8 +11,22 @@ use Doctrine\Common\Annotations\Annotation\Target;
 /**
  * @Annotation
  * @NamedArgumentConstructor
- * @Target("PROPERTY")
+ * @Target("METHOD")
  */
-class Property
+class Validator
 {
+    /**
+     * @var string $property
+     */
+    private $property;
+
+    public function getProperty(): string
+    {
+        return $this->property;
+    }
+
+    public function __construct(string $property)
+    {
+        $this->property = $property;
+    }
 }

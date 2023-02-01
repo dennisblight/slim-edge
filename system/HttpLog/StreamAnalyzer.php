@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace SlimEdge\Middleware\HttpLogger;
+namespace SlimEdge\HttpLog;
 use Psr\Http\Message\StreamInterface;
 
 /**

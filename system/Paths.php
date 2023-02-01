@@ -8,7 +8,7 @@ define('SYS_PATH', __DIR__);
 define('APP_PATH', BASEPATH . '/app');
 define('STORAGE_PATH', BASEPATH . '/storage');
 
-abstract class Paths
+final class Paths
 {
     public const App = APP_PATH;
 

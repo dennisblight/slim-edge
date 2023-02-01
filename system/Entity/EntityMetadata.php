@@ -19,61 +19,22 @@ class EntityMetadata
     public $type;
 
     /**
-     * @var \Closure $accessor
+     * @var string $accessor
      */
     public $accessor;
 
     /**
-     * @var \Closure $mutator
+     * @var string $mutator
      */
     public $mutator;
 
-    // public function __construct(string $property, bool $nullable, string $type, \Closure $accessor, \Closure $mutator)
-    // {
-    //     $this->property = $property;
-    //     $this->nullable = $nullable;
-    //     $this->type = $type;
-    //     $this->accessor = $accessor;
-    //     $this->mutator = $mutator;
-    // }
+    /**
+     * @var array $validator
+     */
+    public $validator;
 
-    // /**
-    //  * @return string
-    //  */
-    // public function getProperty()
-    // {
-    //     return $this->property;
-    // }
-
-    // /**
-    //  * @return bool
-    //  */
-    // public function isNullable()
-    // {
-    //     return $this->nullable;
-    // }
-
-    // /**
-    //  * @return string
-    //  */
-    // public function getType()
-    // {
-    //     return $this->type;
-    // }
-
-    // /**
-    //  * @return \Closure
-    //  */
-    // public function getAccessor()
-    // {
-    //     return $this->accessor;
-    // }
-
-    // /**
-    //  * @return \Closure
-    //  */
-    // public function getMutator()
-    // {
-    //     return $this->mutator;
-    // }
+    /**
+     * @var mixed $default
+     */
+    public $default;
 }

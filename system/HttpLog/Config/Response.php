@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace SlimEdge\Middleware\HttpLogger\Config;
+namespace SlimEdge\HttpLog\Config;
 
 class Response
 {

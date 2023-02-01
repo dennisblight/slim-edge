@@ -27,40 +27,53 @@ class CorsMiddleware implements MiddlewareInterface
         RequestHandlerInterface $handler
     ): ResponseInterface
     {
-        $routeContext = RouteContext::fromRequest($request);
-        $routingResults = $routeContext->getRoutingResults();
-        $methods = $routingResults->getAllowedMethods();
-        
-        $requestHeaders = $request->getHeaderLine('Access-Control-Request-Headers');
-        if($this->config->has('allowHeaders'))
-        {
-            $allowHeaders = $this->config->allowHeaders;
-            $requestHeaders = array_map('trim', explode(',', $requestHeaders));
-            $requestHeaders = join(', ', array_intersect($allowHeaders->all(), $requestHeaders));
-        }
-
-        $origin = '*';
-        if($this->config->has('allowOrigins')) {
-            $requestOrigin = $request->getHeaderLine('origin');
-            $allowOrigins = (array) $this->config->allowOrigins;
-
-            if(in_array('*', $allowOrigins)) {
-                $origin = '*';
-            }
-            elseif(in_array($requestOrigin, $allowOrigins)) {
-                $origin = $requestOrigin;
-            }
-            else {
-                $origin = (string) $request->getUri()->withPath('');
-            }
-        }
-
         $response = $handler->handle($request);
 
-        $response = $response->withHeader('Access-Control-Allow-Origin', $origin);
-        $response = $response->withHeader('Access-Control-Allow-Methods', implode(',', $methods));
-        $response = $response->withHeader('Access-Control-Allow-Headers', $requestHeaders);
-        
+        $routeContext = RouteContext::fromRequest($request);
+        $routingResults = $routeContext->getRoutingResults();
+
+        $methods = $routingResults->getAllowedMethods();
+        if(!empty($methods)) {
+            $response = $response->withHeader('Access-Control-Allow-Methods', implode(',', $methods));
+        }
+
+        $requestOrigin = $request->getHeaderLine('Origin');
+        if(!empty($requestOrigin)) {
+            $origin = (string) $request->getUri()->withPath('');
+
+            if($this->config->has('allowOrigins')) {
+                $allowOrigins = (array) $this->config->allowOrigins;
+
+                if(in_array('*', $allowOrigins)) {
+                    $origin = '*';
+                }
+                elseif(in_array($requestOrigin, $allowOrigins)) {
+                    $origin = $requestOrigin;
+                }
+            }
+
+            $response = $response->withHeader('Access-Control-Allow-Origin', $origin);
+        }
+
+        $requestHeaders = $request->getHeaderLine('Access-Control-Request-Headers');
+        if(!empty($requestHeaders)) {
+            if($this->config->has('allowHeaders')) {
+                $allowHeaders = $this->config->allowHeaders;
+                $requestHeaders = array_map('trim', explode(',', $requestHeaders));
+                $requestHeaders = join(', ', array_intersect($allowHeaders->all(), $requestHeaders));
+            }
+            if(!empty($requestHeaders))
+                $response = $response->withHeader('Access-Control-Allow-Headers', $requestHeaders);
+        }
+
+        if($this->config->has('exposeHeaders')) {
+            $exposeHeaders = $this->config->exposeHeaders;
+            $responseheaders = array_keys($response->getHeaders());
+            $exposeHeaders = join(', ', array_intersect($exposeHeaders->all(), $responseheaders));
+            if(!empty($exposeHeaders))
+                $response = $response->withHeader('Access-Control-Expose-Headers', $exposeHeaders);
+        }
+
         return $response;
     }
 }

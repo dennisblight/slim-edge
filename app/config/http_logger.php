@@ -14,7 +14,7 @@ return [
     /**
      * Log writer class
      */
-    'writer' => SlimEdge\Middleware\HttpLogger\Writer\FileWriter::class,
+    'writer' => SlimEdge\HttpLog\Writer\FileWriter::class,
 
     'logRequest' => [
         /**

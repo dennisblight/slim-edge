@@ -55,6 +55,12 @@ if(!function_exists('is_binary'))
 
 if(!function_exists('chop_string'))
 {
+    /**
+     * @param string $string Input string
+     * @param int $length Maximum string length
+     * 
+     * @return string Chopped string
+     */
     function chop_string($string, $length)
     {
         return strlen($string) > $length ? substr($string, 0, $length) : $string;
@@ -65,6 +71,7 @@ if(!function_exists('to_camel_case'))
 {
     /**
      * @param string $string Snake-cased string
+     * @return string Camel cased string
      */
     function to_camel_case($string)
     {
@@ -78,6 +85,7 @@ if(!function_exists('to_pascal_case'))
 {
     /**
      * @param string $string Snake-cased string
+     * @return string Pascal cased string
      */
     function to_pascal_case($string)
     {
@@ -89,6 +97,7 @@ if(!function_exists('to_snake_case'))
 {
     /**
      * @param string $string Pascal or camel cased string
+     * @return string Snake cased string
      */
     function to_snake_case($string)
     {
@@ -176,5 +185,17 @@ if(!function_exists('urlsafe_base64_decode'))
     function urlsafe_base64_decode($value)
     {
         return base64_decode(strtr($value, '._-', '+/='));
+    }
+}
+
+if(!function_exists('remove_invisible_characters'))
+{
+    /**
+     * @param string $string
+     * @return string Removed invisible characters
+     */
+    function remove_invisible_characters($string)
+    {
+        return preg_replace('/[\x00-\x1F\x7F\xA0]/u', '', $string);
     }
 }

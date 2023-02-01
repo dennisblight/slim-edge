@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace SlimEdge\Middleware\HttpLogger;
+namespace SlimEdge\HttpLog;
 
 class CompiledConfig extends Config
 {

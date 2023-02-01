@@ -4,6 +4,7 @@ namespace SlimEdge\Annotation\Reader;
 use PhpDocReader\PhpDocReader as DocReader;
 use PhpDocReader\PhpParser\UseStatementParser;
 use ReflectionClass;
+use ReflectionProperty;
 
 class PhpDocReader extends DocReader
 {
@@ -38,20 +39,20 @@ class PhpDocReader extends DocReader
         $comment = $class->getDocComment();
 
         if(!$comment) return null;
-
-        $pattern = '/@property\s+(\\??(?:\\\?[a-zA-Z]\w*)+)\s+\$([a-zA-Z]\w*)/';
-        if(false === preg_match_all($pattern, $comment, $matches)) {
+        
+        $pattern = '/@property\s+(\??(?:\\\\?[a-zA-Z_]\w*)+)(\[\])?\s+\$((?:[a-zA-Z_]\w*)+)/m';
+        if(false === preg_match_all($pattern, $comment, $matches, PREG_SET_ORDER)) {
             return null;
         }
 
-        [, $types, $properties] = $matches;
-
         $result = [];
-        for($i = 0; $i < count($types); $i++)
+
+        for($i = 0; $i < count($matches); $i++)
         {
-            $type = $types[$i];
+            [, $type, $isArray, $propertyName] = $matches[$i];
             $nullable = $type[0] === '?';
             if($nullable) $type = substr($type, 1);
+            if($isArray) $type = 'array';
 
             if(isset(self::PRIMITIVE_TYPES[$type])) {
                 $type = self::PRIMITIVE_TYPES[$type];
@@ -60,13 +61,57 @@ class PhpDocReader extends DocReader
                 $type = $this->tryResolveFqn($type, $class);
             }
 
-            $result[$properties[$i]] = [
-                'property' => $properties[$i],
+            $result[$propertyName] = [
+                'property' => $propertyName,
                 'type'     => ltrim($type, '\\'),
                 'nullable' => $nullable,
             ];
         }
-        
+
+        return $result;
+    }
+
+    public function readProperties(ReflectionClass $class)
+    {
+        $result = [];
+        $defaultProperties = $class->getDefaultProperties();
+
+        foreach($class->getProperties() as $property) {
+            if($property->isStatic() || $property->isPublic()) {
+                continue;
+            }
+
+            $propertyName = $property->getName();
+            $result[$propertyName] = [
+                'property' => $propertyName,
+                'type'     => 'mixed',
+                'nullable' => true,
+                'default'  => $defaultProperties[$propertyName] ?? null,
+            ];
+
+            $comment = $property->getDocComment();
+            if(!$comment) continue;
+
+            $pattern = '/@var\s+(\??(?:\\\\?[a-zA-Z_]\w*)+)(\[\])?/m';
+            if(false === preg_match($pattern, $comment, $match) || empty($match)) {
+                continue;
+            }
+
+            @[, $type, $isArray] = $match;
+            $nullable = $type[0] === '?';
+            if($nullable) $type = substr($type, 1);
+            if($isArray) $type = 'array';
+            if(isset(self::PRIMITIVE_TYPES[$type])) {
+                $type = self::PRIMITIVE_TYPES[$type];
+            }
+            elseif($type[0] !== '\\') {
+                $type = $this->tryResolveFqn($type, $class);
+            }
+
+            $result[$propertyName]['type'] = ltrim($type, '\\');
+            $result[$propertyName]['nullable'] = $nullable;
+        }
+
         return $result;
     }
 

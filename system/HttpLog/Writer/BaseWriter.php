@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-namespace SlimEdge\Middleware\HttpLogger\Writer;
+namespace SlimEdge\HttpLog\Writer;
 
-use SlimEdge\Middleware\HttpLogger\Config;
+use SlimEdge\HttpLog\Config;
 
 abstract class BaseWriter
 {

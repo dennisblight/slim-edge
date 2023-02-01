@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace SlimEdge\Middleware\HttpLogger;
+namespace SlimEdge\HttpLog;
 
 class LogData
 {
@@ -25,6 +25,7 @@ class LogData
         $this->data['type'] = $type;
 
         $this->append('datetime', $datetime->format(\DateTime::RFC3339_EXTENDED));
+        $this->append('timestamp', $datetime->getTimestamp() * 1000 + $datetime->format('v'));
         $this->appendAll($payload);
     }
 

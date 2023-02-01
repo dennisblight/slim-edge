@@ -51,9 +51,16 @@ class AnnotationRoute
 
     public function getControllerClasses(): array
     {
-        $files = rglob(Paths::Controller . '/*.php');
         $classes = [];
-        foreach($files as $file) {
+        foreach(rglob(Paths::App . '/*.php') as $file) {
+            if(str_starts_with($file, Paths::App . '/routes/'))
+                continue;
+
+            if(str_starts_with($file, Paths::App . '/helpers/'))
+                continue;
+
+            if(str_starts_with($file, Paths::App . '/config/'))
+                continue;
 
             $controller = str_replace(
                 [Paths::App, '.php', '/'],
