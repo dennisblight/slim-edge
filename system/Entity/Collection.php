@@ -16,7 +16,7 @@ class Collection extends AbstractCollection
         $this->recursiveCollection = $recursiveCollection;
         $this->replace($data);
     }
-    
+
     public function offsetSet($key, $value): void
     {
         if($this->recursiveCollection && !($value instanceof \Closure) && (is_iterable($value) || is_object($value))) {

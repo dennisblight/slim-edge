@@ -14,12 +14,12 @@ use Psr\Http\Message\StreamInterface;
 use Psr\Http\Message\UploadedFileInterface;
 use Psr\Http\Server\RequestHandlerInterface;
 use SlimEdge\Entity\Collection;
-use SlimEdge\Paths;
 
-use function SlimEdge\Helpers\enable_cache;
+use function SlimEdge\Helpers\get_cache;
+use function SlimEdge\Helpers\set_cache;
 use function SlimEdge\Helpers\uuid_format;
 
-class HttpLogMiddleware implements MiddlewareInterface
+class Middleware implements MiddlewareInterface
 {
     public const ContextNone = 0;
 
@@ -38,6 +38,11 @@ class HttpLogMiddleware implements MiddlewareInterface
     public const BodyToFile = 2;
 
     /**
+     * @var ContainerInterface $container
+     */
+    private $container;
+
+    /**
      * @var Config $config
      */
     private $config;
@@ -54,24 +59,23 @@ class HttpLogMiddleware implements MiddlewareInterface
 
     public function __construct(ContainerInterface $container)
     {
+        $this->container = $container;
         $this->registry = $container->get('registry');
         $this->initConfig($container);
     }
 
     private function initConfig(ContainerInterface $container)
     {
-        $cacheEnabled = enable_cache('config');
-        if($cacheEnabled && file_exists($path = Paths::Cache . '/httpLogger/CompiledConfig.php')) {
-            $this->config = require $path;
+        $cached = get_cache(Config::class, null, 'config');
+        if(!is_null($cached)) {
+            $this->config = $cached;
             return;
         }
 
         $config = $container->get('config.http_logger');
         $this->config = new Config($config);
-
-        if($cacheEnabled) {
-            $this->config->compileConfig($path);
-        }
+        
+        set_cache(Config::class, $this->config, 'config');
     }
 
     public function process(
@@ -96,7 +100,9 @@ class HttpLogMiddleware implements MiddlewareInterface
     private function logRequest(ServerRequestInterface $request)
     {
         $writer = $this->getWriter();
-        if(!$writer) return;
+        if(!$writer) {
+            return;
+        }
 
         $config = $this->config->logRequest;
 
@@ -185,7 +191,9 @@ class HttpLogMiddleware implements MiddlewareInterface
     private function logResponse(ServerRequestInterface $request, ResponseInterface $response)
     {
         $writer = $this->getWriter();
-        if(!$writer) return;
+        if(!$writer) {
+            return;
+        }
 
         $config = $this->config->logResponse;
 
@@ -198,6 +206,7 @@ class HttpLogMiddleware implements MiddlewareInterface
         if($routeConfig) {
             $config->override($routeConfig);
         }
+
         if(!$config->checkStatusCode($response->getStatusCode())) {
             return;
         }

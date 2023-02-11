@@ -13,6 +13,7 @@ use Doctrine\Common\Annotations\Reader;
 use Psr\Http\Message\ServerRequestInterface;
 use Doctrine\Common\Annotations\PsrCachedReader;
 use Doctrine\Common\Annotations\AnnotationReader;
+use Hashids\Hashids;
 
 use function SlimEdge\Helpers\enable_cache;
 

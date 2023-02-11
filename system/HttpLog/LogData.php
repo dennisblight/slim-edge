@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace SlimEdge\HttpLog;
 
+use Hashids\Hashids;
+use SlimEdge\Kernel;
+
 class LogData
 {
     /**
@@ -11,33 +14,19 @@ class LogData
      */
     private $data = [];
 
-    /**
-     * @var \HashContext $hashContext
-     */
-    private $hashContext;
-
     public function __construct(string $type, array $payload = [])
     {
-        $this->hashContext = hash_init('md5');
-        hash_update($this->hashContext, $type);
-
         $datetime = new \DateTime();
         $this->data['type'] = $type;
 
-        $this->append('datetime', $datetime->format(\DateTime::RFC3339_EXTENDED));
         $this->append('timestamp', $datetime->getTimestamp() * 1000 + $datetime->format('v'));
+        $this->append('datetime', $datetime->format(\DateTime::RFC3339_EXTENDED));
         $this->appendAll($payload);
     }
 
-    public function append(string $key, $value, $hash = true)
+    public function append(string $key, $value)
     {
         $this->data[$key] = $value;
-        if($hash === true) {
-            $this->updateHash($value);
-        }
-        elseif(is_string($hash)) {
-            $this->updateHash($hash);
-        }
     }
 
     public function appendAll(array $array)
@@ -53,18 +42,7 @@ class LogData
      */
     public function finish()
     {
-        $this->data['hash'] = hash_final($this->hashContext);
+        $this->data['hash'] = hashids('httpLog')->encode($this->data['timestamp']);
         return $this->data;
-    }
-
-    private function updateHash($value)
-    {
-        hash_update($this->hashContext, '|');
-        if(is_scalar($value)) {
-            hash_update($this->hashContext, strval($value));
-        }
-        else {
-            hash_update($this->hashContext, json_encode($value));
-        }
     }
 }

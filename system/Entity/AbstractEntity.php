@@ -4,24 +4,20 @@ declare(strict_types=1);
 
 namespace SlimEdge\Entity;
 
-use Psr\SimpleCache\CacheInterface;
-use Respect\Validation\Validator;
+use ArrayIterator;
 use Respect\Validation\Rules;
+use Respect\Validation\Rules\AbstractRule;
 use SlimEdge\Annotation\Reader\EntityReader;
-use SlimEdge\Annotation\Reader\EntityReader2;
+use SlimEdge\Exceptions\CastException;
 use SlimEdge\Exceptions\EntityException;
 use SlimEdge\Helpers;
-use SlimEdge\Kernel;
+use Traversable;
 
-use function SlimEdge\Helpers\enable_cache;
+use function SlimEdge\Helpers\get_cache;
+use function SlimEdge\Helpers\set_cache;
 
-class AbstractEntity extends AbstractCollection
+abstract class AbstractEntity implements \IteratorAggregate, \ArrayAccess, \Serializable, \Countable, \JsonSerializable
 {
-    /**
-     * @var bool $resolved
-     */
-    protected static $resolved = false;
-
     /**
      * @var bool $expandable
      * Allow entity to add property
@@ -29,7 +25,7 @@ class AbstractEntity extends AbstractCollection
     protected static $expandable = false;
 
     /**
-     * @var array<string, EntityMetadata> $metadata
+     * @var array<string, EntityMetadata>[] $metadata
      */
     protected static $metadata = [];
 
@@ -38,20 +34,63 @@ class AbstractEntity extends AbstractCollection
      */
     protected static $validator = null;
 
-    /**
-     * @param iterable|object $data
-     */
-    public function __construct($data = [])
-    {
-        static::resolveBehavior();
+    protected $data = [];
 
-        foreach(array_keys(static::$metadata) as $key) {
-            if(!isset($data[$key])) {
-                $data[$key] = $this->getDefault($key);
+    function __construct($data = [], $rawMode = false)
+    {
+        if($rawMode) {
+            foreach($data as $key => $value) {
+                $this->data[$key] = $value;
             }
         }
+        else {
+            foreach($data as $key => $value) {
+                $this->offsetSet($key, $value);
+            }
+        }
+    }
 
-        parent::__construct($data);
+    protected static function getMetadata() {
+        if(!array_key_exists(static::class, static::$metadata)) {
+            static::resolveBehavior();
+        }
+
+        return static::$metadata[static::class];
+    }
+
+    public function count(): int
+    {
+        return count($this->data);
+    }
+
+    public function getIterator(): Traversable
+    {
+        return new ArrayIterator($this->data);
+    }
+
+    public function __serialize(): array
+    {
+        return $this->data;
+    }
+
+    public function serialize()
+    {
+        return serialize($this->data);
+    }
+
+    public function __unserialize(array $data): void
+    {
+        $this->replace($data);
+    }
+
+    public function unserialize($data)
+    {
+        $this->replace($data);
+    }
+
+    public function __get($key)
+    {
+        return $this->offsetGet($key);
     }
 
     public function offsetGet($key)
@@ -62,12 +101,13 @@ class AbstractEntity extends AbstractCollection
         }
 
         // Try get from current collection if exists
-        if(parent::offsetExists($key)) {
-            return parent::offsetGet($key);
+        if(array_key_exists($key, $this->data)) {
+            return $this->data[$key];
         }
 
         // Try get default from metadata
-        if(array_key_exists($key, static::$metadata)) {
+        $metadata = static::getMetadata();
+        if(array_key_exists($key, $metadata)) {
             return $this->getDefault($key);
         }
 
@@ -79,29 +119,100 @@ class AbstractEntity extends AbstractCollection
         return null;
     }
 
+    public function __set($key, $value)
+    {
+        $this->offsetSet($key, $value);
+    }
+
     public function offsetSet($key, $value): void
     {
-        if(!array_key_exists($key, static::$metadata) && !static::$expandable) {
+        $meta = static::getMetadata();
+        if($meta && (!array_key_exists($key, $meta) && !static::$expandable)) {
             return;
         }
 
         // Try to cast
-        if(array_key_exists($key, static::$metadata)) {
-            $metadata = static::$metadata[$key];
-            $value = $this->cast($metadata->type, $value, $metadata->nullable);
+        $exception = null;
+        try
+        {
+            if(array_key_exists($key, $meta)) {
+                $metadata = $meta[$key];
+                $value = $this->cast($metadata->type, $value, $metadata->nullable);
+            }
+        }
+        catch(CastException $ex)
+        {
+            $exception = $ex;
         }
 
         // Try set using mutator
-        if($this->mutate($key, $value, $mutated)) {
+        if($isMutated = $this->mutate($key, $value, $mutated)) {
             $value = $mutated;
         }
-        
-        parent::offsetSet($key, $value);
+
+        if(!$isMutated && $exception) {
+            throw $exception;
+        }
+
+        $this->data[$key] = $value;
+    }
+
+    public function offsetExists($key): bool
+    {
+        return array_key_exists($key, $this->data);
+    }
+
+    public function __unset($key)
+    {
+        $this->offsetUnset($key);
+    }
+
+    public function offsetUnset($key): void
+    {
+        unset($this->data[$key]);
+    }
+
+    public function jsonSerialize()
+    {
+        return $this->data;
+    }
+
+    public function all(): array
+    {
+        return $this->data;
+    }
+
+    /**
+     * @param iterable|object $data
+     */
+    public function replace($data): void
+    {
+        $this->clear();
+        $this->merge($data);
+    }
+
+    public function clear(): void
+    {
+        foreach(array_keys($this->data) as $key) {
+            $this->offsetUnset($key);
+        }
+    }
+
+    /**
+     * @param iterable|object $data
+     */
+    public function merge($data): void
+    {
+        foreach ($data as $key => $value)
+        {
+            $this->offsetSet($key, $value);
+        }
     }
 
     protected function access($key, &$result): bool
     {
-        if(!array_key_exists($key, static::$metadata) || is_null($accessor = static::$metadata[$key]->accessor)) {
+        $meta = static::getMetadata();
+        if(!array_key_exists($key, $meta) || is_null($accessor = $meta[$key]->accessor)) {
             // Accessor not set
             return false;
         }
@@ -126,12 +237,13 @@ class AbstractEntity extends AbstractCollection
 
     protected function mutate($key, $value, &$result): bool
     {
-        if(!array_key_exists($key, static::$metadata)) {
+        $meta = static::getMetadata();
+        if(!array_key_exists($key, $meta)) {
             // Mutator not available, metadata not found
             return false;
         }
 
-        $mutator = static::$metadata[$key]->mutator;
+        $mutator = $meta[$key]->mutator;
 
         if(is_null($mutator)) {
             // Mutator not set
@@ -198,26 +310,24 @@ class AbstractEntity extends AbstractCollection
         );
     }
 
-    protected function getValidator($key)
+    protected function getValidator($key): AbstractRule
     {
-        if(!array_key_exists($key, static::$metadata))
+        $meta = static::getMetadata();
+        if(!array_key_exists($key, $meta))
             return null;
 
-        $validator = static::$metadata[$key]->validator;
-        if(empty($validator))
-            return null;
-
-        return call_user_func([$this, $validator], $key);
+        $validator = $meta[$key]->validator;
+        return is_null($validator) ? call_user_func([$this, $validator], $key) : null;
     }
 
-    public function getValidators()
+    public function getValidators(): AbstractRule
     {
-        if(!empty(static::$validator))
-            return static::$validator;
+        if(isset(static::$validator[static::class]))
+            return static::$validator[static::class];
 
         $rules = [];
-        foreach(static::$metadata as $metadata) {
-            if(!empty($metadata->validator)) {
+        foreach(static::getMetadata() as $metadata) {
+            if(!is_null($metadata->validator)) {
                 [$validatorMethodName, $isMandatory] = $metadata->validator;
                 $validator = call_user_func([$this, $validatorMethodName], $metadata->property);
                 $rule = new Rules\Key($metadata->property, $validator, $isMandatory);
@@ -225,12 +335,13 @@ class AbstractEntity extends AbstractCollection
             }
         }
 
-        return static::$validator = new Rules\KeySet(...$rules);
+        return static::$validator[static::class] = new Rules\KeySet(...$rules);
     }
 
     protected function getDefault($key)
     {
-        $metadata = static::$metadata[$key];
+        $meta = static::getMetadata();
+        $metadata = $meta[$key];
         if($metadata->type == 'mixed' || $metadata->nullable) return null;
 
         switch($metadata->type) {
@@ -269,9 +380,9 @@ class AbstractEntity extends AbstractCollection
         );
     }
 
-    public static function resolveBehavior()
+    protected static function resolveBehavior()
     {
-        if(!static::$resolved && !static::tryResolveFromCache()) {
+        if(!static::tryResolveFromCache()) {
             static::resolve();
             static::saveToCache();
         }
@@ -279,44 +390,28 @@ class AbstractEntity extends AbstractCollection
 
     protected static function resolve()
     {
-        if(!static::$resolved) {
-            $reader = new EntityReader2(static::class);
-            static::$metadata = $reader->readMetadata();
-            static::$resolved = true;
+        if(!array_key_exists(static::class, static::$metadata)) {
+            $reader = new EntityReader(static::class);
+            static::$metadata[static::class] = $reader->readMetadata();
             return true;
         }
 
         return false;
     }
 
-    protected static function saveToCache()
+    protected static function saveToCache(): bool
     {
-        if(!enable_cache('entity')) {
-            return false;
-        }
-
-        /** @var CacheInterface $cache */
-        $cache = Kernel::$container->get(CacheInterface::class);
-        $cacheKey = 'entity-' . str_replace('\\', '_', static::class);
-        $cache->set($cacheKey, static::$metadata);
-        return true;
+        return set_cache(static::class, static::$metadata[static::class], 'entity');
     }
 
     protected static function tryResolveFromCache(): bool
     {
-        if(!enable_cache('entity')) {
+        $cached = get_cache(static::class, null, 'entity');
+        if(is_null($cached)) {
             return false;
         }
 
-        /** @var CacheInterface $cache */
-        $cache = Kernel::$container->get(CacheInterface::class);
-        $cacheKey = 'entity-' . str_replace('\\', '_', static::class);
-        if(is_null($cache) || !$cache->has($cacheKey)) {
-            return false;
-        }
-
-        static::$metadata = $cache->get($cacheKey);
-
-        return static::$resolved = true;
+        static::$metadata[static::class] = $cached;
+        return true;
     }
 }

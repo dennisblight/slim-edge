@@ -1,6 +1,6 @@
 <?php
 
-if(!function_exists('route_class'))
+if(! function_exists('route_class'))
 {
     function route_class($class, $method)
     {
@@ -8,7 +8,7 @@ if(!function_exists('route_class'))
     }
 }
 
-if(!function_exists('timestamp'))
+if(! function_exists('timestamp'))
 {
     function timestamp($time = 'now')
     {
@@ -16,7 +16,7 @@ if(!function_exists('timestamp'))
     }
 }
 
-if(!function_exists('random_string'))
+if(! function_exists('random_string'))
 {
     function random_string($length = 10, $pool = 'QWERTYUIOPASDFGHJKLZXCVBNMqwertyuiopasdfghjklzxcvbnm1234567890-_')
     {
@@ -29,7 +29,7 @@ if(!function_exists('random_string'))
     }
 }
 
-if(!function_exists('str_pad_left'))
+if(! function_exists('str_pad_left'))
 {
     function str_pad_left($string, $length, $padString = ' ')
     {
@@ -37,7 +37,7 @@ if(!function_exists('str_pad_left'))
     }
 }
 
-if(!function_exists('str_pad_right'))
+if(! function_exists('str_pad_right'))
 {
     function str_pad_right($string, $length, $padString = ' ')
     {
@@ -45,7 +45,7 @@ if(!function_exists('str_pad_right'))
     }
 }
 
-if(!function_exists('is_binary'))
+if(! function_exists('is_binary'))
 {
     function is_binary($string)
     {
@@ -53,7 +53,7 @@ if(!function_exists('is_binary'))
     }
 }
 
-if(!function_exists('chop_string'))
+if(! function_exists('chop_string'))
 {
     /**
      * @param string $string Input string
@@ -67,7 +67,7 @@ if(!function_exists('chop_string'))
     }
 }
 
-if(!function_exists('to_camel_case'))
+if(! function_exists('to_camel_case'))
 {
     /**
      * @param string $string Snake-cased string
@@ -81,7 +81,7 @@ if(!function_exists('to_camel_case'))
     }
 }
 
-if(!function_exists('to_pascal_case'))
+if(! function_exists('to_pascal_case'))
 {
     /**
      * @param string $string Snake-cased string
@@ -93,7 +93,7 @@ if(!function_exists('to_pascal_case'))
     }
 }
 
-if(!function_exists('to_snake_case'))
+if(! function_exists('to_snake_case'))
 {
     /**
      * @param string $string Pascal or camel cased string
@@ -107,7 +107,7 @@ if(!function_exists('to_snake_case'))
     }
 }
 
-if(!function_exists('string_equals'))
+if(! function_exists('string_equals'))
 {
     /**
      * Compare string with timing attack prevention
@@ -138,41 +138,7 @@ if(!function_exists('string_equals'))
     }
 }
 
-if(!function_exists('byte_format'))
-{
-    function byte_format($num, $precision = 1)
-	{
-		if ($num >= 1000000000000)
-		{
-			$num = round($num / 1099511627776, $precision);
-			$unit = 'TB';
-		}
-		elseif ($num >= 1000000000)
-		{
-			$num = round($num / 1073741824, $precision);
-			$unit = 'GB';
-		}
-		elseif ($num >= 1000000)
-		{
-			$num = round($num / 1048576, $precision);
-			$unit = 'MB';
-		}
-		elseif ($num >= 1000)
-		{
-			$num = round($num / 1024, $precision);
-			$unit = 'KB';
-		}
-		else
-		{
-			$unit = 'B';
-			return number_format($num).' '.$unit;
-		}
-
-		return number_format($num, $precision).' '.$unit;
-	}
-}
-
-if(!function_exists('urlsafe_base64_encode'))
+if(! function_exists('urlsafe_base64_encode'))
 {
     function urlsafe_base64_encode($value)
     {
@@ -180,7 +146,7 @@ if(!function_exists('urlsafe_base64_encode'))
     }
 }
 
-if(!function_exists('urlsafe_base64_decode'))
+if(! function_exists('urlsafe_base64_decode'))
 {
     function urlsafe_base64_decode($value)
     {
@@ -188,7 +154,7 @@ if(!function_exists('urlsafe_base64_decode'))
     }
 }
 
-if(!function_exists('remove_invisible_characters'))
+if(! function_exists('remove_invisible_characters'))
 {
     /**
      * @param string $string

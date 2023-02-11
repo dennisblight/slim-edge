@@ -70,7 +70,7 @@ class JWT
             return [];
         }
         
-        $type = is_object($payload) ? get_class($payload) : gettype($payload);
+        $type = typeof($payload);
         throw new InvalidArgumentException("Could not resolve 'payload' from argument type '{$type}'");
     }
 

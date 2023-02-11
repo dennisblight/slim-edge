@@ -49,6 +49,11 @@ class RequireCredential implements MiddlewareInterface
         
         try {
             $credential = $this->jwtEncoder->decode($token);
+
+            if($class = $this->config->get('credentialClass', false)) {
+                $credential = new $class($credential, true);
+            }
+
             $request = $request
                 ->withAttribute('credential', $credential)
                 ->withAttribute('token', $token);
@@ -60,7 +65,7 @@ class RequireCredential implements MiddlewareInterface
         }
     }
 
-    private function fetchToken(ServerRequestInterface $request): ?string
+    protected function fetchToken(ServerRequestInterface $request): ?string
     {
         if(isset($this->token)) return $this->token;
 
@@ -70,15 +75,18 @@ class RequireCredential implements MiddlewareInterface
         foreach($fetchFrom as $source) {
             if($source == 'header') {
                 $val = $request->getHeaderLine($tokenField);
-                if(isset($val)) return $this->token = $val;
+                if(isset($val))
+                    return $this->token = $val;
             }
             elseif($source == 'get' || $source == 'query') {
                 $queries = $request->getQueryParams();
-                if(isset($queries[$tokenField])) return $this->token = $queries[$tokenField];
+                if(isset($queries[$tokenField]))
+                    return $this->token = $queries[$tokenField];
             }
             elseif($source == 'post' || $source == 'body') {
                 $body = $request->getParsedBody();
-                if(isset($body[$tokenField])) return $this->token = $body[$tokenField];
+                if(isset($body[$tokenField]))
+                    return $this->token = $body[$tokenField];
             }
         }
     }

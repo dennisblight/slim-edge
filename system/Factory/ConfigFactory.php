@@ -6,7 +6,7 @@ namespace SlimEdge\Factory;
 
 use SlimEdge\Entity\Collection;
 
-abstract class ConfigFactory
+final class ConfigFactory
 {
     public const OptionAsRecursiveCollection = 1;
     public const OptionAsCollection = 2;
@@ -17,15 +17,14 @@ abstract class ConfigFactory
         $config = [];
         foreach ($configFiles as $script) {
             $_config = require $script;
-            assert(is_array($_config), "Config file '{$script}' must return array");
+            assert(is_array($_config), "Config file '{$script}' must return an array");
             $config = array_merge_deep($config, $_config);
         }
 
-        switch($option) {
-            case self::OptionAsArray: return $config;
-            case self::OptionAsCollection: return new Collection($config, false);
-            default: return new Collection($config);
-        }
+        return $option !== self::OptionAsArray
+            ? new Collection($config, $option !== self::OptionAsCollection)
+            : $config
+        ;
     }
 
     private function __construct()

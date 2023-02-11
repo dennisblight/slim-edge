@@ -36,7 +36,7 @@ if (!function_exists('get_base_url')) {
         static $baseURL = null;
         if (is_null($baseURL)) {
             $baseURL = is_https() ? 'https' : 'http';
-            $baseURL .= '://' . $_SERVER['SERVER_NAME'];
+            $baseURL .= '://' . ($_SERVER['SERVER_NAME'] ?? '???');
             $baseURL .= get_base_path() . '/';
         }
 

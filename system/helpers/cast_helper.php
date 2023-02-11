@@ -2,6 +2,8 @@
 
 namespace SlimEdge\Helpers;
 
+use function PHPSTORM_META\type;
+
 if(! function_exists('SlimEdge\Helpers\cast_integer'))
 {
     function cast_integer($value): int
@@ -14,7 +16,7 @@ if(! function_exists('SlimEdge\Helpers\cast_integer'))
             throw new \SlimEdge\Exceptions\CastException("Could not cast string from '{$value}' to integer");
         }
 
-        $type = is_object($value) ? get_class($value) : gettype($value);
+        $type = type($value);
         throw new \SlimEdge\Exceptions\CastException("Could not cast from type '{$type}' to integer");
     }
 }
@@ -31,7 +33,7 @@ if(! function_exists('SlimEdge\Helpers\cast_float'))
             throw new \SlimEdge\Exceptions\CastException("Could not cast string from '{$value}' to float");
         }
 
-        $type = is_object($value) ? get_class($value) : gettype($value);
+        $type = typeof($value);
         throw new \SlimEdge\Exceptions\CastException("Could not cast from type '{$type}' to float");
     }
 }
@@ -44,7 +46,7 @@ if(! function_exists('SlimEdge\Helpers\cast_string'))
             return strval($value);
         }
 
-        $type = is_object($value) ? get_class($value) : gettype($value);
+        $type = typeof($value);
         throw new \SlimEdge\Exceptions\CastException("Could not cast from type '{$type}' to string");
     }
 }
@@ -57,7 +59,7 @@ if(! function_exists('SlimEdge\Helpers\cast_boolean'))
             return boolval($value);
         }
 
-        $type = is_object($value) ? get_class($value) : gettype($value);
+        $type = typeof($value);
         throw new \SlimEdge\Exceptions\CastException("Could not cast from type '{$type}' to boolean");
     }
 }
@@ -78,7 +80,7 @@ if(! function_exists('SlimEdge\Helpers\cast_date'))
             throw new \SlimEdge\Exceptions\CastException("Could not cast string from '{$value}' to date");
         }
 
-        $type = is_object($value) ? get_class($value) : gettype($value);
+        $type = typeof($value);
         throw new \SlimEdge\Exceptions\CastException("Could not cast from type '{$type}' to date");
     }
 }
@@ -99,7 +101,7 @@ if(! function_exists('SlimEdge\Helpers\cast_time'))
             throw new \SlimEdge\Exceptions\CastException("Could not cast string from '{$value}' to time");
         }
 
-        $type = is_object($value) ? get_class($value) : gettype($value);
+        $type = typeof($value);
         throw new \SlimEdge\Exceptions\CastException("Could not cast from type '{$type}' to time");
     }
 }
@@ -120,7 +122,7 @@ if(! function_exists('SlimEdge\Helpers\cast_datetime'))
             throw new \SlimEdge\Exceptions\CastException("Could not cast string from '{$value}' to datetime");
         }
 
-        $type = is_object($value) ? get_class($value) : gettype($value);
+        $type = typeof($value);
         throw new \SlimEdge\Exceptions\CastException("Could not cast from type '{$type}' to datetime");
     }
 }

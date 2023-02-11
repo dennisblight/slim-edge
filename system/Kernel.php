@@ -119,6 +119,7 @@ class Kernel
             'config' => DI\create(Collection::class)->constructor($config),
         ];
 
+        date_default_timezone_set($config['timezone'] ?? 'UTC');
         $this->registerConfig($definitions);
         $this->registerDependencies($definitions);
         $this->registerHelpers($definitions);
@@ -231,8 +232,8 @@ class Kernel
     public function registerMiddleware(array $config)
     {
         $app = static::$app;
-        $app->add(RequestPassingMiddleware::class);
 
+        $app->add(RequestPassingMiddleware::class);
         $middlewares = $config['middleware'] ?? [];
         foreach($middlewares as $middleware) {
             $app->add($middleware);
@@ -243,11 +244,8 @@ class Kernel
             $app->addBodyParsingMiddleware();
         }
 
-        $enableCors = $config['cors']['enableCors'] ?? false;
-        if($enableCors) {
-            $app->options('{uri:.+}', Preflight::class)->setName('preflight');
-            $app->add(CorsMiddleware::class);
-        }
+        $app->options('{uri:.+}', Preflight::class)->setName('preflight');
+        $app->add(Cors\Middleware::class);
 
         $app->addRoutingMiddleware();
     }

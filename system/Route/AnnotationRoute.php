@@ -6,7 +6,6 @@ namespace SlimEdge\Route;
 
 use Doctrine\Common\Annotations\Reader;
 use Psr\Container\ContainerInterface;
-use Psr\SimpleCache\CacheInterface;
 use ReflectionClass;
 use ReflectionMethod;
 use Slim\Interfaces\RouteInterface;
@@ -14,7 +13,8 @@ use SlimEdge\Annotation\Route;
 use SlimEdge\Kernel;
 use SlimEdge\Paths;
 
-use function SlimEdge\Helpers\enable_cache;
+use function SlimEdge\Helpers\get_cache;
+use function SlimEdge\Helpers\set_cache;
 
 class AnnotationRoute
 {
@@ -33,11 +33,6 @@ class AnnotationRoute
     public function __construct(ContainerInterface $container)
     {
         $this->container = $container;
-    }
-
-    protected function enableCache(): bool
-    {
-        return $this->enableCache ?? ($this->enableCache = enable_cache('route'));
     }
 
     public function register()
@@ -172,21 +167,11 @@ class AnnotationRoute
      */
     protected function registerFromCache(): bool
     {
-        if($this->enableCache()) {
-            /**
-             * @var CacheInterface $cache
-             */
-            $cache = $this->container->get(CacheInterface::class);
+        $cached = get_cache(self::CacheKey, null, 'route');
 
-            /**
-             * @var array $cachedRoute
-             */
-            $cachedRoute = $cache->get(self::CacheKey);
-
-            if(!is_null($cachedRoute)) {
-                $this->registerResolvedRoutes($cachedRoute);
-                return true;
-            }
+        if(!is_null($cached)) {
+            $this->registerResolvedRoutes($cached);
+            return true;
         }
 
         return false;
@@ -194,14 +179,7 @@ class AnnotationRoute
 
     protected function saveToCache(array $resolvedRoutes): void
     {
-        if($this->enableCache()) {
-            /**
-             * @var CacheInterface $cache
-             */
-            $cache = $this->container->get(CacheInterface::class);
-
-            $cache->set(self::CacheKey, $resolvedRoutes);
-        }
+        set_cache(self::CacheKey, $resolvedRoutes, 'route');
     }
 
     protected function registerResolvedRoutes(array $resolvedRoutes): void

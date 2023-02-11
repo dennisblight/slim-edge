@@ -44,7 +44,7 @@ final class StreamAnalyzer
         $hash = hash_init('md5');
 
         while(!$this->stream->eof()) {
-            $content = $this->stream->read(102400);
+            $content = $this->stream->read(1024);
             $this->size += strlen($content);
             $this->isBinary = $this->isBinary || is_binary($content);
             hash_update($hash, $content);

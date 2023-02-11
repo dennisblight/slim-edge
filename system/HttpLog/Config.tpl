@@ -14,7 +14,7 @@ class CompiledConfig extends Config
 
     public $writer = '{writer}';
 
-    public $routes = '{routes}';
+    public $routes = {routes};
 
     public function __construct()
     {

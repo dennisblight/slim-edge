@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace SlimEdge\Entity;
 
+use DI\Annotation\Inject;
 use Psr\Http\Message\ServerRequestInterface;
 use Slim\Routing\RouteContext;
 
@@ -50,6 +51,12 @@ class AbstractForm extends AbstractEntity
      */
     public static function fromRequest(ServerRequestInterface $request)
     {
+        $params = static::createParamsFromRequest($request);
+        return new static($params, false);
+    }
+
+    private static function createParamsFromRequest(ServerRequestInterface $request): array
+    {
         $params = [];
 
         if(!empty(static::$fetchQuery)) {
@@ -82,7 +89,16 @@ class AbstractForm extends AbstractEntity
                     $params[$field] = $args[$field];
         }
 
-        return new static($params);
+        return $params;
+    }
+
+    /**
+     * @Inject
+     */
+    public function mergeRequest(ServerRequestInterface $request)
+    {
+        $params = static::createParamsFromRequest($request);
+        $this->merge($params);
     }
 
     public function offsetSet($key, $value): void

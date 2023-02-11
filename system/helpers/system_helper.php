@@ -2,6 +2,7 @@
 
 namespace SlimEdge\Helpers;
 
+use Psr\SimpleCache\CacheInterface;
 use SlimEdge\Entity\Collection;
 use SlimEdge\Exceptions\ConfigException;
 use SlimEdge\Kernel;
@@ -18,7 +19,7 @@ if(! function_exists('SlimEdge\Helpers\enable_cache'))
         /**
          * @var Collection $config
          */
-        $config = Kernel::$container->get('config');
+        $config = container('config');
 
         $cacheEnabled = $config->get('enableCache', false);
         if(is_bool($cacheEnabled)) {
@@ -37,8 +38,40 @@ if(! function_exists('SlimEdge\Helpers\enable_cache'))
             return $cacheEnabled === $scope;
         }
         
-        $class = is_object($cacheEnabled) ? get_class($cacheEnabled) : gettype($cacheEnabled);
+        $class = typeof($cacheEnabled);
         throw new ConfigException("Could not resolve '{$class}' for config enableCache");
+    }
+}
+
+if(! function_exists('SlimEdge\Helpers\get_cache'))
+{
+    function get_cache(string $key, $default = null, ?string $scope = null)
+    {
+        if(is_null($scope) || enable_cache($scope)) {
+            /** @var CacheInterface $cache */
+            $cache = container(CacheInterface::class);
+            $cacheKey = str_replace('\\', '_', $key);
+            if($scope) $cacheKey = $scope . '-' . $cacheKey;
+            return $cache->get($cacheKey, $default);
+        }
+
+        return $default;
+    }
+}
+
+if(! function_exists('SlimEdge\Helpers\set_cache'))
+{
+    function set_cache(string $key, $value, ?string $scope = null): bool
+    {
+        if(is_null($scope) || enable_cache($scope)) {
+            /** @var CacheInterface $cache */
+            $cache = container(CacheInterface::class);
+            $cacheKey = str_replace('\\', '_', $key);
+            if($scope) $cacheKey = $scope . '-' . $cacheKey;
+            return $cache->set($cacheKey, $value);
+        }
+
+        return false;
     }
 }
 

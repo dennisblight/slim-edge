@@ -30,6 +30,8 @@ final class Paths
 
     public const Middleware = APP_PATH . '/Middleware';
 
+    public const Modules = APP_PATH . '/Modules';
+
     private function __construct()
     {
     }
